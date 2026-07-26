@@ -65,16 +65,23 @@ don't even appear as an option; and `AddressCollector` holds back addresses owne
 user under the same setting, warning once, while addresses owned by anything else travel
 as ordinary content.
 
-### Phase 3 — schema & settings export
-`SchemaExporter` writing `schema/` — sites, sections + entry types, field definitions
-(incl. settings and options), category/tag groups, volumes + filesystems, user groups and
-permissions, global set definitions, routes, and general site settings. This is what makes
-a bundle re-modelable on the target platform rather than just a pile of rows.
+### Phase 3 — schema & settings export *(done)*
+`SchemaExporter` covering sites, sections + entry types, field definitions (incl. settings
+and options), category/tag groups, volumes, filesystems, user groups + permissions, global
+set definitions, routes, the installed plugin list, and hand-picked system settings. This
+is what makes a bundle re-modelable on the target platform rather than just a pile of rows.
 
-### Phase 4 — remaining writers
-`NdjsonWriter`, `XmlWriter`, `YamlWriter` (symfony/yaml ships with Craft), `CsvWriter`
-(one file per record type + `relations.csv` + `assets.csv`, with a documented flattening
-convention for nested values).
+Filesystems are exported by name and type only, never their settings — that's where cloud
+credentials live. `system` is likewise a curated set rather than a dump of the general
+config, which holds the security key.
+
+### Phase 4 — remaining writers *(done)*
+`NdjsonWriter`, `XmlWriter`, `YamlWriter` (symfony/yaml ships with Craft) and `CsvWriter`.
+
+CSV needed real thought since it can't nest: one file per record type, a `relations.csv`
+join table, the schema in its own `schema/` directory, dotted-key flattening, `|` for
+multi-value cells, and JSON in the cell for anything that genuinely won't flatten. The
+`Flattener` helper holds those rules so other tabular writers can reuse them.
 
 ### Phase 5 — scale
 Queue jobs for export, batched element iteration, streaming writers so a 100k-entry site

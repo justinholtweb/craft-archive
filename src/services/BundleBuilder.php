@@ -79,7 +79,11 @@ class BundleBuilder extends Component
         $manifest = $context->meta + [
             'dataFiles' => array_values($dataFiles),
             'contents' => $context->counts(),
-            'assets' => $context->assetStats,
+            'assets' => $context->assetStats + [
+                // Every file that actually made it in, so a reader can check the bundle is
+                // complete without walking the ZIP.
+                'files' => array_values(array_column($context->queuedFiles, 'path')),
+            ],
             'options' => $this->options($context),
             'warnings' => $context->warnings,
         ];
@@ -120,11 +124,13 @@ class BundleBuilder extends Component
             'Layout',
             '------',
             '  manifest.json  Machine-readable description of this bundle. Always JSON.',
-            '  ' . implode(', ', $dataFiles) . '  The exported content.',
             '  assets/        Asset files, laid out as assets/<volume>/<folder>/<filename>.',
             '',
-            'The site’s structure — sections, entry types, field definitions, volumes and',
-            'groups — travels inside the data file above, under `schema`.',
+            'Data files',
+            '----------',
+            ...array_map(fn(string $file) => '  ' . $file, $dataFiles),
+            '',
+            ...$this->schemaNote($dataFiles),
             '',
             'Assets',
             '------',
@@ -149,6 +155,32 @@ class BundleBuilder extends Component
         }
 
         file_put_contents($stagingDir . DIRECTORY_SEPARATOR . 'README.txt', implode("\n", $lines));
+    }
+
+    /**
+     * Where the site's structure ended up, which depends on the format: formats that nest
+     * carry it inside the data file, CSV has to put it in its own directory.
+     *
+     * @param string[] $dataFiles
+     * @return string[]
+     */
+    private function schemaNote(array $dataFiles): array
+    {
+        $inSchemaDir = array_filter($dataFiles, fn(string $file) => str_starts_with($file, 'schema/'));
+
+        if ($inSchemaDir) {
+            return [
+                'The site’s structure — sections, entry types, field definitions, volumes and',
+                'groups — is in the schema/ files listed above.',
+                '',
+            ];
+        }
+
+        return [
+            'The site’s structure — sections, entry types, field definitions, volumes and',
+            'groups — travels inside the data file above, under `schema`.',
+            '',
+        ];
     }
 
     /**

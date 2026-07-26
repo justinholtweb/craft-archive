@@ -37,8 +37,24 @@ data/            the master data file — metadata, the site's structure, and ev
 assets/          asset files, laid out as assets/<volume>/<folder>/<filename>.
 ```
 
-The site's structure — sections, entry types, field definitions, volumes, groups — travels
-inside the data file under `schema`, so the content model arrives with the content.
+The site's structure — sites, sections, entry types, field definitions, groups, volumes,
+routes and the installed plugin list — travels inside the data file under `schema`, so the
+content model arrives with the content. Filesystems are described by name and type only:
+their settings are never exported, because that's where cloud credentials live.
+
+## Formats
+
+| Format | Output | Good for |
+| --- | --- | --- |
+| **JSON** | `data/archive.json` | the canonical, lossless master file |
+| **NDJSON** | `data/archive.ndjson` | huge sites — one object per line, nothing to hold in memory |
+| **XML** | `data/archive.xml` | systems that speak XML; rich text is preserved in CDATA |
+| **YAML** | `data/archive.yaml` | reading or hand-editing the model before an import |
+| **CSV** | `data/csv/*.csv` + `schema/*.csv` | spreadsheets and simple importers |
+
+CSV can't nest, so it gets one file per record type, a `relations.csv` join table, and the
+schema in its own directory. Values that won't flatten are JSON-encoded into their cell.
+[docs/FORMAT.md](docs/FORMAT.md) documents the conventions.
 
 The full specification is in [docs/FORMAT.md](docs/FORMAT.md).
 

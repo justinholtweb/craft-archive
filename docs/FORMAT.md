@@ -14,9 +14,14 @@ my-site-2026-07-26-140233.zip
     └── <volumeHandle>/<path>/<filename>   copied files from local volumes only
 ```
 
-The site's structure — sections, entry types, field definitions, volumes, groups — lives
-inside the master data file under `schema`. Formats that can't nest, like CSV, put it in a
-`schema/` directory instead.
+The site's structure — sites, sections, entry types, field definitions, category and tag
+groups, volumes, filesystems, global sets, user groups with their permissions, routes, the
+installed plugin list, and hand-picked system settings — lives inside the master data file
+under `schema`. Formats that can't nest, like CSV, put it in a `schema/` directory instead.
+
+Filesystems are described by name and type only. Their settings are never exported: that's
+where an S3 or Spaces filesystem keeps its access key and secret, and a bundle is a file
+people email each other.
 
 ## manifest.json
 
@@ -41,7 +46,10 @@ inside the master data file under `schema`. Formats that can't nest, like CSV, p
   "format": "json",
   "dataFiles": ["data/archive.json"],
   "contents": { "entries": 128, "categories": 9 },
-  "assets": { "included": 42, "referenced": 7, "skipped": 1, "bytes": 18452113 },
+  "assets": {
+    "included": 42, "referenced": 7, "skipped": 1, "bytes": 18452113,
+    "files": ["assets/images/hero.jpg", "…"]
+  },
   "options": { "…the ExportConfig used…" },
   "warnings": ["…anything Archive could not fully represent…"]
 }
@@ -66,14 +74,62 @@ The JSON writer emits a single document:
 }
 ```
 
-Other writers carry the same information in their own idiom:
+Other writers carry the same information in their own idiom.
 
-- **NDJSON** — one JSON object per line: `{"_type":"meta",…}`, then one line per record.
-- **XML** — `<archive><meta/><schema/><records><record type="entry">…</record></records></archive>`.
-- **YAML** — the JSON document, in YAML.
-- **CSV** — `data/csv/<type>.csv` per record type, plus `relations.csv` and `assets.csv`.
-  Nested values are flattened with dotted keys (`fields.body`, `fields.gallery.0.url`);
-  multi-value cells use `|` as the separator.
+### NDJSON — `data/archive.ndjson`
+
+One self-describing JSON object per line, so nothing has to hold the document in memory:
+
+```
+{"_type":"meta","meta":{…}}
+{"_type":"schema","schema":{…}}
+{"_type":"record","recordType":"entries","record":{…}}
+```
+
+### YAML — `data/archive.yaml`
+
+The JSON document, in YAML. Structurally identical.
+
+### XML — `data/archive.xml`
+
+```xml
+<archive formatVersion="1.0">
+  <meta>…</meta>
+  <schema>…</schema>
+  <records>
+    <record type="entries">…</record>
+  </records>
+</archive>
+```
+
+- An object becomes one child element per key; a list becomes repeated `<item>` elements.
+- A key that isn't a legal XML name becomes `<item key="…">`, which is what makes arbitrary
+  field handles safe to emit.
+- Null is `<foo nil="true"/>`; booleans are the strings `true` and `false`.
+- Values containing markup or newlines are wrapped in CDATA, so rich text survives intact.
+
+### CSV — `data/csv/` and `schema/`
+
+CSV can't nest, so a bundle in this format is a set of files rather than one document:
+
+```
+data/csv/<type>.csv     one row per record, columns flattened to dotted keys
+data/csv/relations.csv  one row per relation target, joining records by uid
+schema/<key>.csv        the site's structure, which has nowhere else to go
+```
+
+- Nested keys flatten to dotted columns: `container.section`, `author.username`,
+  `file.filename`.
+- The header is the union of every row's keys, so a column one record uses and another
+  doesn't still appears.
+- Multi-value cells use `|` as the separator.
+- Each field becomes a single `fields.<handle>` column. Relations collapse to a list of
+  target uids — the full targets are in `relations.csv`; an `option` collapses to its
+  value; anything that genuinely can't flatten (Matrix blocks, table rows, `raw`) is
+  JSON-encoded into its cell.
+- A record type that matched nothing is skipped rather than written as an empty file. The
+  manifest still records the zero.
+- Quoting is plain RFC 4180 — no backslash escaping.
 
 ## Records
 

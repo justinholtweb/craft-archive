@@ -3,8 +3,12 @@
 namespace justinholtweb\archive\services;
 
 use justinholtweb\archive\events\RegisterWritersEvent;
+use justinholtweb\archive\writers\CsvWriter;
 use justinholtweb\archive\writers\JsonWriter;
+use justinholtweb\archive\writers\NdjsonWriter;
 use justinholtweb\archive\writers\WriterInterface;
+use justinholtweb\archive\writers\XmlWriter;
+use justinholtweb\archive\writers\YamlWriter;
 use yii\base\Component;
 
 /**
@@ -66,6 +70,10 @@ class WriterRegistry extends Component
         $event = new RegisterWritersEvent([
             'writers' => [
                 new JsonWriter(),
+                new NdjsonWriter(),
+                new XmlWriter(),
+                new YamlWriter(),
+                new CsvWriter(),
             ],
         ]);
 
