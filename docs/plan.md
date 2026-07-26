@@ -129,6 +129,30 @@ compared against the JSON reference.
 Testing the store this way meant taking Craft's `FileHelper` out of it, which was
 unnecessary coupling for what is plain file I/O.
 
+## Verification
+
+Beyond the two test suites, these were checked against a live install with purpose-built
+fixtures, because they're the parts a real migration leans on hardest and none of them were
+exercised by the day-to-day test content:
+
+- **Multi-site** — exporting two sites produces a record per site; translations share a uid
+  and differ by `site`, `siteId` and `language`; the sites filter narrows the run.
+- **Globals** — a global set with a site-translatable field produces one record per site,
+  each with its own value. (With a non-translatable field Craft shares the value across
+  sites, which is correct and worth knowing when reading a bundle.)
+- **Remote assets** — with the volume repointed at a real S3 filesystem, assets are
+  referenced by URL and no file is queued; with downloading switched on, an unreachable
+  bucket produces a warning rather than a failed export.
+- **Asset size limit** — files over the ceiling are referenced instead of copied, counted
+  as skipped and warned about; a limit of 0 means no limit.
+- **Retention** — `prune()` removes bundles past the age limit and trims to the count limit.
+
+That pass found one real bug, since fixed: asset references are written during collection,
+so `bundled: true` was a promise made before the file was on disk, and a copy failing later
+left the bundle claiming to contain a file it didn't have. Files are now copied as each
+asset is encountered, and the integration suite asserts that every reference claiming to be
+bundled has its file.
+
 ## Non-goals
 
 - Importing. Archive never writes to the Craft database.

@@ -31,8 +31,14 @@ class ExportContext
     public array $warnings = [];
 
     /**
-     * @var array<string, array{asset: Asset, path: string}> Files to copy into the bundle,
-     *      keyed by asset UID so an asset referenced ten times is only copied once.
+     * @var string Where the bundle is being assembled. Set before collection starts, so
+     *      asset files can be copied as they're encountered rather than afterwards.
+     */
+    public string $stagingDir = '';
+
+    /**
+     * @var array<string, array{asset: Asset, path: string}> Files that made it into the
+     *      bundle, keyed by asset UID so an asset referenced ten times is only copied once.
      */
     public array $queuedFiles = [];
 

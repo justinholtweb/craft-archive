@@ -189,6 +189,34 @@ foreach ($paths as $format => $path) {
     check("$format bundle contains its asset files", $missing === []);
 }
 
+// --- nothing may claim to be bundled unless it really is -----------------------------
+// Asset references are written during collection, so `bundled: true` is a promise made
+// before the file is on disk. If a copy ever fails after that promise, a bundle would
+// claim to contain a file it doesn't have.
+$claimed = [];
+
+$collectClaims = function(array $node) use (&$collectClaims, &$claimed): void {
+    if (isset($node['bundled'], $node['path']) && $node['bundled'] === true) {
+        $claimed[] = $node['path'];
+    }
+
+    foreach ($node as $value) {
+        if (is_array($value)) {
+            $collectClaims($value);
+        }
+    }
+};
+
+$collectClaims($reference);
+$claimed = array_values(array_unique($claimed));
+
+$broken = array_filter($claimed, fn(string $file) => entry($paths['json'], $file) === null);
+check(
+    'every reference claiming to be bundled has its file (' . count($claimed) . ' claimed)',
+    $broken === [],
+    $broken === [] ? '' : implode(', ', $broken)
+);
+
 // --- clean up -------------------------------------------------------------------------
 foreach ($plugin->bundles->getAll(500) as $bundle) {
     if (str_starts_with($bundle->name, $prefix)) {

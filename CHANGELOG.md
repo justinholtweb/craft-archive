@@ -25,6 +25,14 @@
 - Portable values for Hyper, FreeLink, Google Maps and SEOmatic fields, which previously
   exported as opaque data containing Craft element IDs. Element links now carry a target
   reference, and SEOmatic's images resolve to asset references.
+
+### Fixed
+
+- An asset reference could claim `bundled: true` for a file that never made it into the
+  bundle. References are written during collection, so the flag was a prediction; if the
+  copy failed afterwards — an unreachable remote filesystem, a missing file, a permissions
+  problem — the bundle described a file it didn't contain. Files are now copied as each
+  asset is encountered, so the flag reflects what actually happened.
 - JSON master data file plus a `manifest.json` describing every bundle.
 - Control panel export screen, bundle list with download and delete, and settings screen.
 - `archive:export` and `archive:manage` permissions.

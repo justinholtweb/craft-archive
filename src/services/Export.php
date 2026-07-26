@@ -69,6 +69,18 @@ class Export extends Component
         }
 
         try {
+            $writer = $plugin->writers->get($config->format);
+
+            if ($writer === null) {
+                throw new RuntimeException("No writer is registered for the “{$config->format}” format.");
+            }
+
+            // The staging directory has to exist before collection, because asset files are
+            // copied as they're encountered — that's what lets a record's `bundled` flag be
+            // a fact rather than a prediction.
+            $stagingDir = $plugin->builder->createStagingDir($name);
+            $context->stagingDir = $stagingDir;
+
             $this->collect($context);
 
             if ($config->includeSchema) {
@@ -77,16 +89,7 @@ class Export extends Component
 
             $context->meta = $plugin->builder->meta($context);
 
-            $stagingDir = $plugin->builder->createStagingDir($name);
-
-            $writer = $plugin->writers->get($config->format);
-            if ($writer === null) {
-                throw new RuntimeException("No writer is registered for the “{$config->format}” format.");
-            }
-
             $dataFiles = $writer->write($context, $stagingDir);
-
-            $plugin->assets->copyFiles($context, $stagingDir);
 
             $plugin->builder->writeManifest($context, $stagingDir, $dataFiles);
             $plugin->builder->writeReadme($context, $stagingDir, $dataFiles);
