@@ -7,7 +7,7 @@ Archive packages entries, assets, relations, users and the site's own structure 
 containing a single master data file — JSON, XML, CSV, YAML or NDJSON — plus the asset
 files themselves. Nothing in a bundle needs Craft to read it.
 
-Free and MIT-licensed.
+Free to use, under [the Craft License](LICENSE.md).
 
 ## Requirements
 
@@ -158,4 +158,6 @@ format designed for systems that aren't Craft.
 
 ## Licence
 
-MIT.
+[The Craft License](LICENSE.md). Archive is free — there's no purchase, licence key or
+edition gate — but it's licensed rather than public domain, on the same terms Craft itself
+uses.

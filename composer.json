@@ -16,7 +16,7 @@
         "csv",
         "xml"
     ],
-    "license": "MIT",
+    "license": "proprietary",
     "minimum-stability": "dev",
     "prefer-stable": true,
     "authors": [
