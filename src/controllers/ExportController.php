@@ -40,6 +40,7 @@ class ExportController extends Controller
             'typeOptions' => $plugin->collectors->options(),
             'formatOptions' => $plugin->writers->options(),
             'sections' => Craft::$app->getEntries()->getAllSections(),
+            'volumes' => Craft::$app->getVolumes()->getAllVolumes(),
             'sites' => Craft::$app->getSites()->getAllSites(),
         ]);
     }
@@ -83,6 +84,7 @@ class ExportController extends Controller
         $config->types = array_values(array_filter((array)$request->getBodyParam('types', ['entries'])));
         $config->siteHandles = array_values(array_filter((array)$request->getBodyParam('siteHandles', [])));
         $config->sectionHandles = array_values(array_filter((array)$request->getBodyParam('sectionHandles', [])));
+        $config->volumeHandles = array_values(array_filter((array)$request->getBodyParam('volumeHandles', [])));
         $config->format = (string)$request->getBodyParam('format', $config->format);
         $config->includeDisabled = (bool)$request->getBodyParam('includeDisabled', false);
         $config->includeAssetFiles = (bool)$request->getBodyParam('includeAssetFiles', $config->includeAssetFiles);

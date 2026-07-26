@@ -144,8 +144,34 @@ differ by `site`, which is how translations stay linkable without nesting.
 ```
 
 Keys that don't apply to a type are omitted rather than set to `null` — a category has no
-`author` or `postDate`, so those keys simply aren't there. `container` differs per type
-(`{ "group": "topics" }` for categories, `{ "volume": "images" }` for assets, and so on).
+`author` or `postDate`, so those keys simply aren't there.
+
+### Per type
+
+`container` says where a record lived, and differs by type:
+
+| `type` | `container` | Also carries |
+| --- | --- | --- |
+| `entry` | `{ section, sectionName, sectionType, entryType, entryTypeName }` | `author`, `authors`, `postDate`, `expiryDate`; `level` + `parent` in structures |
+| `category` | `{ group, groupName }` | `level`, `parent` |
+| `tag` | `{ group, groupName }` | — |
+| `globalSet` | `{ handle, name }` | — |
+| `asset` | `{ volume, volumeName, folderPath }` | `file` (see below) |
+| `user` | — | `username`, `email`, `fullName`, `firstName`, `lastName`, `admin`, `pending`, `locked`, `suspended`, `lastLoginDate`, `groups`, `preferences`, `photo` |
+| `address` | — | `label`, `fullName`, `organization`, `countryCode`, `administrativeArea`, `locality`, `dependentLocality`, `postalCode`, `sortingCode`, `addressLine1`–`3`, `latitude`, `longitude`, `owner` |
+
+An asset record's `file` key holds the same file metadata an asset ref does — `filename`,
+`kind`, `mimeType`, `size`, `width`, `height`, `alt`, `bundled`, `path` — so a record and a
+reference to it describe the file identically.
+
+**User records never contain a password hash**, under any setting. Users are also excluded
+from bundles entirely unless the site's operator has explicitly allowed it, as are
+addresses belonging to a user account.
+
+### Records without a site
+
+`user` and `address` records carry no `site`, `siteId` or `language`, because those element
+types have no per-site content in Craft. Every other type has one record per site.
 
 ### Field values
 

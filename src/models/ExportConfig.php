@@ -28,6 +28,11 @@ class ExportConfig extends Model
     public array $sectionHandles = [];
 
     /**
+     * @var string[] Volume handles to limit assets to. Empty means every volume.
+     */
+    public array $volumeHandles = [];
+
+    /**
      * @var bool Whether disabled elements are included alongside enabled ones.
      */
     public bool $includeDisabled = false;

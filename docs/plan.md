@@ -51,10 +51,19 @@ CP nav. Neutral record format, `FieldSerializer` covering core field types, `Ent
 `JsonWriter`, `BundleBuilder` (staging → manifest → ZIP), `Export` service, CP export form,
 bundles list with download/delete, settings screen.
 
-### Phase 2 — full content coverage
-Collectors for categories, tags, global sets, assets, users (opt-in), addresses.
-`AssetBundler`: copy local volume files into `assets/<volume>/<path>`, reference remote
-volumes by URL, honour a max-file-size skip, dedupe, record every file in the manifest.
+### Phase 2 — full content coverage *(done)*
+Collectors for categories, tags, global sets, assets, users (opt-in) and addresses, plus
+a volumes filter on the export form.
+
+`BaseCollector` gained two hooks: `isLocalized()`, so types with no per-site content —
+users, addresses — are walked once and emit records with no site keys; and
+`shouldCollect()`, for filtering a query can't express.
+
+Two personal-data decisions are enforced in code rather than left to the operator:
+`UserCollector::isAvailable()` returns false until user export is switched on, so users
+don't even appear as an option; and `AddressCollector` holds back addresses owned by a
+user under the same setting, warning once, while addresses owned by anything else travel
+as ordinary content.
 
 ### Phase 3 — schema & settings export
 `SchemaExporter` writing `schema/` — sites, sections + entry types, field definitions

@@ -58,10 +58,23 @@
 
         {{ forms.checkboxGroupField({
             label: "Sections"|t('archive'),
-            instructions: "Leave empty to export every section."|t('archive'),
+            instructions: "Which entries to export. Leave empty for every section."|t('archive'),
             name: 'sectionHandles',
             options: sectionChoices,
             values: config.sectionHandles,
+        }) }}
+
+        {% set volumeChoices = [] %}
+        {% for volume in volumes %}
+            {% set volumeChoices = volumeChoices|merge([{ label: volume.name, value: volume.handle }]) %}
+        {% endfor %}
+
+        {{ forms.checkboxGroupField({
+            label: "Volumes"|t('archive'),
+            instructions: "Which assets to export. Leave empty for every volume."|t('archive'),
+            name: 'volumeHandles',
+            options: volumeChoices,
+            values: config.volumeHandles,
         }) }}
 
         {{ forms.textField({

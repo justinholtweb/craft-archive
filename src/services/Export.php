@@ -130,7 +130,16 @@ class Export extends Component
     {
         $registry = Plugin::getInstance()->collectors;
 
-        foreach ($context->config->types as $key) {
+        // Run in registry order rather than whatever order the form posted, so bundles are
+        // laid out the same way every time.
+        $requested = $context->config->types;
+        $ordered = array_values(array_filter(
+            array_keys($registry->all()),
+            fn(string $key) => in_array($key, $requested, true)
+        ));
+        $unknown = array_values(array_diff($requested, $ordered));
+
+        foreach ([...$ordered, ...$unknown] as $key) {
             $collector = $registry->get($key);
 
             if ($collector === null) {

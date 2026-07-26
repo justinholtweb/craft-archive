@@ -210,6 +210,7 @@ class BundleBuilder extends Component
             'types' => $config->types,
             'sites' => array_map(fn($site) => $site->handle, $config->getSites()),
             'sections' => $config->sectionHandles,
+            'volumes' => $config->volumeHandles,
             'includeDisabled' => $config->includeDisabled,
             'includeAssetFiles' => $config->includeAssetFiles,
             'downloadRemoteAssets' => $config->downloadRemoteAssets,

@@ -57,11 +57,25 @@ someone. Every asset reference says which it is:
 `bundled: false` means fetch it from `url`. You can override this per export if you do want
 the bytes, and there's a size limit above which files are referenced rather than copied.
 
+## What gets exported
+
+Entries, categories, tags, global sets, assets, addresses — and users, if you allow them.
+Each is a checkbox on the export screen, and the sections and volumes filters narrow down
+entries and assets respectively.
+
+Records for the same element in different sites share a `uid` and differ by `site`, so
+translations stay linkable without nesting. Users and addresses have no per-site content in
+Craft, so their records carry no site keys at all.
+
 ## Users
 
 User accounts are **not** exported unless you turn them on in the settings, because a
-bundle is a downloadable ZIP full of personal data. Password hashes are never exported,
-whatever that setting says.
+bundle is a downloadable ZIP full of personal data. Until you do, users don't even appear
+as an option on the export screen, and addresses belonging to a user account are held back
+too — addresses owned by anything else, like an address field on an entry, travel as
+ordinary content.
+
+Password hashes are never exported, whatever that setting says.
 
 ## Extending it
 

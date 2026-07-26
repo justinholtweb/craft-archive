@@ -2,8 +2,14 @@
 
 namespace justinholtweb\archive\services;
 
+use justinholtweb\archive\collectors\AddressCollector;
+use justinholtweb\archive\collectors\AssetCollector;
+use justinholtweb\archive\collectors\CategoryCollector;
 use justinholtweb\archive\collectors\CollectorInterface;
 use justinholtweb\archive\collectors\EntryCollector;
+use justinholtweb\archive\collectors\GlobalSetCollector;
+use justinholtweb\archive\collectors\TagCollector;
+use justinholtweb\archive\collectors\UserCollector;
 use justinholtweb\archive\events\RegisterCollectorsEvent;
 use yii\base\Component;
 
@@ -65,9 +71,17 @@ class CollectorRegistry extends Component
      */
     private function load(): array
     {
+        // Ordered so that a bundle reads sensibly top to bottom, and so the things other
+        // records point at appear before the records pointing at them.
         $event = new RegisterCollectorsEvent([
             'collectors' => [
                 new EntryCollector(),
+                new CategoryCollector(),
+                new TagCollector(),
+                new GlobalSetCollector(),
+                new AssetCollector(),
+                new UserCollector(),
+                new AddressCollector(),
             ],
         ]);
 

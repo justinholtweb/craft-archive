@@ -27,9 +27,30 @@ abstract class BaseCollector extends Component implements CollectorInterface
     }
 
     /**
+     * Whether this element type has per-site content.
+     *
+     * Localized types are walked once per exported site and produce one record per site.
+     * Types that don't vary by site — users, addresses — are walked once, and their
+     * records carry no site keys at all.
+     */
+    protected function isLocalized(): bool
+    {
+        return true;
+    }
+
+    /**
      * The query this collector walks, for one site.
      */
     abstract protected function query(ExportContext $context, Site $site): ?ElementQueryInterface;
+
+    /**
+     * A last filter, for decisions a query can't express — such as holding back addresses
+     * that belong to user accounts when users aren't being exported.
+     */
+    protected function shouldCollect(ElementInterface $element, ExportContext $context): bool
+    {
+        return true;
+    }
 
     /**
      * Type-specific keys — `container`, `author`, dates and so on. Merged into the record
@@ -39,7 +60,7 @@ abstract class BaseCollector extends Component implements CollectorInterface
 
     public function collect(ExportContext $context): void
     {
-        foreach ($context->config->getSites() as $site) {
+        foreach ($this->sites($context) as $site) {
             $query = $this->query($context, $site);
 
             if ($query === null) {
@@ -48,6 +69,10 @@ abstract class BaseCollector extends Component implements CollectorInterface
 
             foreach ($this->each($query, $context) as $element) {
                 try {
+                    if (!$this->shouldCollect($element, $context)) {
+                        continue;
+                    }
+
                     $context->addRecord(static::key(), $this->record($element, $context, $site));
                 } catch (Throwable $e) {
                     $context->warn(Craft::t('archive', 'Skipped {type} {id}: {message}', [
@@ -67,6 +92,22 @@ abstract class BaseCollector extends Component implements CollectorInterface
     }
 
     /**
+     * The sites to walk. Non-localized types are walked exactly once.
+     *
+     * @return Site[]
+     */
+    protected function sites(ExportContext $context): array
+    {
+        $sites = $context->config->getSites();
+
+        if ($this->isLocalized()) {
+            return $sites;
+        }
+
+        return [reset($sites) ?: Craft::$app->getSites()->getPrimarySite()];
+    }
+
+    /**
      * Builds one record: the shared envelope, the subclass's attributes, then fields and
      * relations.
      */
@@ -77,9 +118,15 @@ abstract class BaseCollector extends Component implements CollectorInterface
             'id' => $element->id,
             'type' => RefHelper::type($element),
             'sourceClass' => $element::class,
-            'site' => $site->handle,
-            'siteId' => $site->id,
-            'language' => $site->language,
+        ];
+
+        if ($this->isLocalized()) {
+            $record['site'] = $site->handle;
+            $record['siteId'] = $site->id;
+            $record['language'] = $site->language;
+        }
+
+        $record += [
             'title' => $element->title,
             'slug' => $element->slug,
             'uri' => $element->uri,
