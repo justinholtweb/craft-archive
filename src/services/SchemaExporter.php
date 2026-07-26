@@ -6,6 +6,7 @@ use Craft;
 use craft\base\FieldInterface;
 use craft\fieldlayoutelements\CustomField;
 use craft\models\FieldLayout;
+use craft\services\ProjectConfig;
 use justinholtweb\archive\helpers\ValueHelper;
 use justinholtweb\archive\models\ExportContext;
 use justinholtweb\archive\Plugin;
@@ -27,6 +28,7 @@ class SchemaExporter extends Component
     public function export(ExportContext $context): void
     {
         $context->schema = ValueHelper::compact([
+            'system' => $this->section($context, 'system settings', $this->system(...)),
             'sites' => $this->section($context, 'sites', $this->sites(...)),
             'sections' => $this->section($context, 'sections', $this->sections(...)),
             'entryTypes' => $this->section($context, 'entry types', $this->entryTypes(...)),
@@ -34,8 +36,11 @@ class SchemaExporter extends Component
             'categoryGroups' => $this->section($context, 'category groups', $this->categoryGroups(...)),
             'tagGroups' => $this->section($context, 'tag groups', $this->tagGroups(...)),
             'volumes' => $this->section($context, 'volumes', $this->volumes(...)),
+            'filesystems' => $this->section($context, 'filesystems', $this->filesystems(...)),
             'globalSets' => $this->section($context, 'global sets', $this->globalSets(...)),
             'userGroups' => $this->section($context, 'user groups', $this->userGroups(...)),
+            'routes' => $this->section($context, 'routes', $this->routes(...)),
+            'plugins' => $this->section($context, 'the plugin list', $this->plugins(...)),
         ]);
     }
 
@@ -55,6 +60,30 @@ class SchemaExporter extends Component
             Craft::warning("Schema export failed for $label: {$e->getMessage()}", Plugin::LOG_CATEGORY);
             return [];
         }
+    }
+
+    /**
+     * Site-wide settings worth carrying. Deliberately hand-picked rather than dumping the
+     * general config, which holds the security key and other secrets.
+     */
+    private function system(): array
+    {
+        $info = Craft::$app->getInfo();
+        $general = Craft::$app->getConfig()->getGeneral();
+
+        return ValueHelper::compact([
+            'name' => Craft::$app->getSystemName(),
+            'timeZone' => Craft::$app->getTimeZone(),
+            'language' => Craft::$app->language,
+            // Craft 5.6 made the edition an enum; older 5.x still reports an int.
+            'edition' => is_object(Craft::$app->edition)
+                ? Craft::$app->edition->name
+                : Craft::$app->edition,
+            'schemaVersion' => $info->schemaVersion,
+            'defaultWeekStartDay' => $general->defaultWeekStartDay,
+            'omitScriptNameInUrls' => $general->omitScriptNameInUrls,
+            'usePathInfo' => $general->usePathInfo,
+        ]);
     }
 
     private function sites(): array
@@ -167,13 +196,82 @@ class SchemaExporter extends Component
         ]), Craft::$app->getGlobals()->getAllSets());
     }
 
+    /**
+     * Filesystems, by name and type only.
+     *
+     * Their settings are *not* exported: an S3 or Spaces filesystem keeps its access key
+     * and secret there, and a bundle is a file people email each other. What a target
+     * platform needs is which volume pointed at what kind of storage, and that's what this
+     * gives it.
+     */
+    private function filesystems(): array
+    {
+        return array_map(fn($fs) => ValueHelper::compact([
+            'handle' => $fs->handle,
+            'name' => $fs->name,
+            'type' => $fs::class,
+            'typeName' => $fs::displayName(),
+            'hasUrls' => $fs->hasUrls,
+            'url' => $fs->hasUrls ? $fs->getRootUrl() : null,
+            'local' => $fs instanceof \craft\fs\Local,
+        ]), Craft::$app->getFs()->getAllFilesystems());
+    }
+
     private function userGroups(): array
     {
+        $permissions = Craft::$app->getUserPermissions();
+
         return array_map(fn($group) => ValueHelper::compact([
             'handle' => $group->handle,
             'name' => $group->name,
             'description' => $group->description,
+            'permissions' => $permissions->getPermissionsByGroupId($group->id),
         ]), Craft::$app->getUserGroups()->getAllGroups());
+    }
+
+    /**
+     * Routes defined in the control panel. Routes living in config/routes.php are the
+     * project's own code and travel with it, so they're not duplicated here.
+     */
+    private function routes(): array
+    {
+        // Read the project config rather than Routes::getProjectConfigRoutes(), which
+        // filters down to the current site — an export wants every site's routes.
+        $stored = Craft::$app->getProjectConfig()->get(ProjectConfig::PATH_ROUTES) ?? [];
+        $sites = Craft::$app->getSites();
+        $routes = [];
+
+        foreach ($stored as $route) {
+            $siteUid = $route['siteUid'] ?? null;
+
+            $routes[] = ValueHelper::compact([
+                'uriPattern' => $route['uriPattern'] ?? null,
+                'template' => $route['template'] ?? null,
+                'site' => $siteUid ? $sites->getSiteByUid($siteUid)?->handle : null,
+            ]);
+        }
+
+        return $routes;
+    }
+
+    /**
+     * What was installed when the bundle was made — the quickest answer to "why is this
+     * field's value an opaque blob?" on the far side of a migration.
+     */
+    private function plugins(): array
+    {
+        $plugins = [];
+
+        foreach (Craft::$app->getPlugins()->getAllPlugins() as $plugin) {
+            $plugins[] = ValueHelper::compact([
+                'handle' => $plugin->id,
+                'name' => $plugin->name,
+                'version' => $plugin->getVersion(),
+                'developer' => $plugin->developer,
+            ]);
+        }
+
+        return $plugins;
     }
 
     /**
