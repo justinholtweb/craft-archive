@@ -32,11 +32,13 @@ Every bundle contains:
 manifest.json    what this bundle is, what's in it, and anything Archive couldn't
                  represent losslessly. Always JSON, whichever format you picked.
 README.txt       the same thing in plain language.
-data/            the master data file.
-schema/          the site's structure — sections, entry types, field definitions,
-                 volumes, groups — so the content model travels with the content.
+data/            the master data file — metadata, the site's structure, and every
+                 record.
 assets/          asset files, laid out as assets/<volume>/<folder>/<filename>.
 ```
+
+The site's structure — sections, entry types, field definitions, volumes, groups — travels
+inside the data file under `schema`, so the content model arrives with the content.
 
 The full specification is in [docs/FORMAT.md](docs/FORMAT.md).
 

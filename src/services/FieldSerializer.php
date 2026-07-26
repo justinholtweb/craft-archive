@@ -10,6 +10,7 @@ use craft\elements\db\ElementQueryInterface;
 use craft\elements\Entry;
 use craft\fields\BaseOptionsField;
 use craft\fields\BaseRelationField;
+use craft\fields\Checkboxes;
 use craft\fields\Color;
 use craft\fields\ContentBlock;
 use craft\fields\data\ColorData;
@@ -20,6 +21,7 @@ use craft\fields\Date;
 use craft\fields\Lightswitch;
 use craft\fields\Matrix;
 use craft\fields\Money;
+use craft\fields\MultiSelect;
 use craft\fields\Number;
 use craft\fields\Range;
 use craft\fields\Table;
@@ -312,6 +314,12 @@ class FieldSerializer extends Component
             return ValueHelper::jsonSafe($option);
         }
 
+        // An unselected dropdown still hands back an OptionData, just an empty one. Report
+        // that as null rather than as an empty object.
+        if ($option->value === null || $option->value === '') {
+            return null;
+        }
+
         return ValueHelper::compact([
             'value' => $option->value,
             'label' => $option->label,
@@ -328,11 +336,21 @@ class FieldSerializer extends Component
             return true;
         }
 
+        return $this->isRichTextField($field);
+    }
+
+    /**
+     * Whether a field produces rich text, judged from the field alone — which is all
+     * there is to go on when its value is empty.
+     */
+    private function isRichTextField(FieldInterface $field): bool
+    {
         if (class_exists(CkeditorField::class) && $field instanceof CkeditorField) {
             return true;
         }
 
-        return false;
+        // Redactor and the other html-field forks all extend the same base.
+        return class_exists(\craft\htmlfield\HtmlField::class) && $field instanceof \craft\htmlfield\HtmlField;
     }
 
     /**
@@ -367,7 +385,9 @@ class FieldSerializer extends Component
             $field instanceof Money => self::KIND_MONEY,
             $field instanceof Color => self::KIND_COLOR,
             $field instanceof Date, $field instanceof Time => self::KIND_DATE,
-            $field instanceof BaseOptionsField => self::KIND_OPTIONS,
+            $field instanceof Checkboxes, $field instanceof MultiSelect => self::KIND_OPTIONS,
+            $field instanceof BaseOptionsField => self::KIND_OPTION,
+            $this->isRichTextField($field) => self::KIND_RICH_TEXT,
             default => self::KIND_TEXT,
         };
     }

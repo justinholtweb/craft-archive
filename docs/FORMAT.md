@@ -10,10 +10,13 @@ my-site-2026-07-26-140233.zip
 ├── data/
 │   └── archive.json         the master data file, in the chosen format
 │       (or archive.ndjson / archive.xml / archive.yaml, or a csv/ directory)
-├── schema/                  site structure — sections, fields, volumes, sites… (phase 3)
 └── assets/
     └── <volumeHandle>/<path>/<filename>   copied files from local volumes only
 ```
+
+The site's structure — sections, entry types, field definitions, volumes, groups — lives
+inside the master data file under `schema`. Formats that can't nest, like CSV, put it in a
+`schema/` directory instead.
 
 ## manifest.json
 
@@ -113,9 +116,18 @@ differ by `site`, which is how translations stay linkable without nesting.
   "expiryDate": null,
 
   "fields": {
-    "body": { "type": "ckeditor", "value": "<p>…</p>" },
-    "featured": { "type": "lightswitch", "value": true },
-    "heroImage": { "type": "assets", "value": [ { "…asset ref…" } ] }
+    "body": {
+      "kind": "richText",
+      "type": "craft\\ckeditor\\Field",
+      "typeName": "CKEditor",
+      "value": "<p>…</p>"
+    },
+    "featured": {
+      "kind": "boolean",
+      "type": "craft\\fields\\Lightswitch",
+      "typeName": "Lightswitch",
+      "value": true
+    }
   },
 
   "relations": [
@@ -137,23 +149,34 @@ Keys that don't apply to a type are omitted rather than set to `null` — a cate
 
 ### Field values
 
-Every entry under `fields` is `{ "type": <craft field type handle>, "value": <portable value> }`.
-The `type` is advisory — it tells an importer how the value was produced — while `value` is
-always plain JSON-representable data:
+Every entry under `fields` has four keys:
 
-| Craft field | `value` |
-| --- | --- |
-| Plain Text, Email, URL, Colour, Icon, Country | string |
-| Number, Money | number (Money also carries `currency`) |
-| Lightswitch | boolean |
-| Date / Time | ISO 8601 string |
-| Dropdown, Radio Buttons | `{ "value": "a", "label": "Option A" }` |
-| Checkboxes, Multi-select | array of the above |
-| CKEditor, Redactor, and other rich text | HTML string, with Craft reference tags already resolved to real URLs |
-| Table | array of row objects keyed by column handle |
-| Matrix | array of block objects: `{ uid, type, typeName, enabled, fields }`, recursively |
-| Entries, Categories, Tags, Users, Assets | array of element refs (see below) |
-| Anything else | whatever the field's own `serializeValue()` produces, JSON-encoded |
+- **`kind`** — what the value *is*, in Archive's own vocabulary. **This is what an importer
+  should switch on**, and it's stable across whichever plugin produced the field.
+- **`type`** — the originating Craft field class, kept for provenance.
+- **`typeName`** — that field type's display name.
+- **`value`** — plain, JSON-representable data.
+
+| `kind` | Craft fields | `value` |
+| --- | --- | --- |
+| `text` | Plain Text, Email, URL, Country | string |
+| `richText` | CKEditor, Redactor, other html-field types | HTML string, reference tags already resolved |
+| `number` | Number, Range | number |
+| `boolean` | Lightswitch | boolean |
+| `date` | Date, Time | ISO 8601 string |
+| `option` | Dropdown, Radio Buttons, Button Group | `{ "value": "a", "label": "Option A" }`, or null when nothing is selected |
+| `options` | Checkboxes, Multi-select | array of the above |
+| `relation` | Entries, Categories, Tags, Users, Assets | array of element refs (see below) |
+| `blocks` | Matrix, Content Block | array of `{ uid, type, typeName, sortOrder, enabled, fields }`, recursively |
+| `table` | Table | array of row objects keyed by column handle |
+| `link` | Link | `{ type, value, url, label }` |
+| `color` | Colour | hex string |
+| `money` | Money | `{ amount, currency }` |
+| `raw` | anything Archive doesn't recognise | whatever the field's own `serializeValue()` produces |
+
+`raw` is the honest fallback: the value still travels, it just arrives as opaque data
+whose shape is the originating plugin's business. Field types from third-party plugins
+land here until Archive learns them.
 
 Rich text is exported with `parseRefs()` applied, so `{asset:14:url}` becomes the real URL
 rather than a Craft-only token.
