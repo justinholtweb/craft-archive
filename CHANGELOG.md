@@ -22,6 +22,9 @@
 - Queued exports, with a "run in the background" option on the export screen.
 - Console commands: `archive/export`, `archive/bundles`, `archive/bundles/prune` and
   `archive/bundles/delete`.
+- Portable values for Hyper, FreeLink, Google Maps and SEOmatic fields, which previously
+  exported as opaque data containing Craft element IDs. Element links now carry a target
+  reference, and SEOmatic's images resolve to asset references.
 - JSON master data file plus a `manifest.json` describing every bundle.
 - Control panel export screen, bundle list with download and delete, and settings screen.
 - `archive:export` and `archive:manage` permissions.

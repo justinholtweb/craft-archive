@@ -28,6 +28,12 @@ use craft\fields\Table;
 use craft\fields\Time;
 use DateTimeInterface;
 use Illuminate\Support\Collection;
+use justinholtweb\archive\events\RegisterValueSerializersEvent;
+use justinholtweb\archive\fields\FreeLinkSerializer;
+use justinholtweb\archive\fields\GoogleMapsSerializer;
+use justinholtweb\archive\fields\HyperSerializer;
+use justinholtweb\archive\fields\SeomaticSerializer;
+use justinholtweb\archive\fields\ValueSerializerInterface;
 use justinholtweb\archive\helpers\RefHelper;
 use justinholtweb\archive\helpers\ValueHelper;
 use justinholtweb\archive\models\ExportContext;
@@ -57,7 +63,20 @@ class FieldSerializer extends Component
     public const KIND_LINK = 'link';
     public const KIND_COLOR = 'color';
     public const KIND_MONEY = 'money';
+    public const KIND_ADDRESS = 'address';
+    public const KIND_SEO = 'seo';
     public const KIND_RAW = 'raw';
+
+    /**
+     * @event RegisterValueSerializersEvent Raised when the per-field-type serializers are
+     *        being loaded.
+     */
+    public const EVENT_REGISTER_VALUE_SERIALIZERS = 'registerValueSerializers';
+
+    /**
+     * @var ValueSerializerInterface[]|null
+     */
+    private ?array $serializers = null;
 
     /**
      * How deep nested blocks may go before Archive stops descending.
@@ -113,6 +132,34 @@ class FieldSerializer extends Component
     }
 
     /**
+     * The per-field-type serializers, loaded once.
+     *
+     * The ones that ship with Archive all guard on `class_exists()`, so they're simply
+     * inert when the plugin they cover isn't installed.
+     *
+     * @return ValueSerializerInterface[]
+     */
+    public function valueSerializers(): array
+    {
+        if ($this->serializers === null) {
+            $event = new RegisterValueSerializersEvent([
+                'serializers' => [
+                    new HyperSerializer(),
+                    new FreeLinkSerializer(),
+                    new GoogleMapsSerializer(),
+                    new SeomaticSerializer(),
+                ],
+            ]);
+
+            $this->trigger(self::EVENT_REGISTER_VALUE_SERIALIZERS, $event);
+
+            $this->serializers = $event->serializers;
+        }
+
+        return $this->serializers;
+    }
+
+    /**
      * Whether a field points at other elements, and so contributes to a record's
      * `relations` list as well as its `fields`.
      */
@@ -145,6 +192,16 @@ class FieldSerializer extends Component
      */
     private function normalize(mixed $value, ElementInterface $element, FieldInterface $field, ExportContext $context, int $depth): array
     {
+        // A registered serializer wins over the built-in handling, including for null
+        // values — a field type knows better than Archive does what "empty" looks like.
+        foreach ($this->valueSerializers() as $serializer) {
+            if ($serializer->supports($field)) {
+                $result = $serializer->serialize($value, $element, $field, $context);
+
+                return [$result['kind'], $result['value']];
+            }
+        }
+
         if ($value === null) {
             return [$this->kindFor($field), null];
         }

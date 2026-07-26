@@ -251,14 +251,58 @@ Every entry under `fields` has four keys:
 | `relation` | Entries, Categories, Tags, Users, Assets | array of element refs (see below) |
 | `blocks` | Matrix, Content Block | array of `{ uid, type, typeName, sortOrder, enabled, fields }`, recursively |
 | `table` | Table | array of row objects keyed by column handle |
-| `link` | Link | `{ type, value, url, label }` |
+| `link` | Link, Hyper, FreeLink | array of link objects (see below) |
 | `color` | Colour | hex string |
 | `money` | Money | `{ amount, currency }` |
+| `address` | Google Maps Address | address parts plus `lat`/`lng` |
+| `seo` | SEOmatic | `{ title, description, keywords, robots, canonicalUrl, images, settings }` |
 | `raw` | anything Archive doesn't recognise | whatever the field's own `serializeValue()` produces |
 
 `raw` is the honest fallback: the value still travels, it just arrives as opaque data
 whose shape is the originating plugin's business. Field types from third-party plugins
-land here until Archive learns them.
+land here until Archive learns them — see
+[docs/EXTENDING.md](EXTENDING.md) for how to teach it one.
+
+### Links
+
+Link fields — Craft's own, Hyper and FreeLink — all produce the same shape, so an importer
+only has to learn it once:
+
+```json
+[
+  {
+    "type": "entry",
+    "text": "Read more",
+    "url": "https://example.com/news/hello-world",
+    "target": { "uid": "…", "id": 9, "type": "entry", "title": "Hello world" },
+    "newWindow": false
+  },
+  { "type": "url", "text": "Craft CMS", "url": "https://craftcms.com" }
+]
+```
+
+Element links carry a `target` ref. This matters more than it looks: Hyper stores an
+element link as a bare Craft ID (`"linkValue": [12]`) and FreeLink nulls the value out
+entirely when serializing, so neither is usable outside the install that produced it.
+
+### SEO
+
+SEOmatic's stored value is a large meta bundle full of derived containers and Twig
+expressions like `{{ seomatic.helper.socialTransform(211, …) }}` — an asset ID wrapped in a
+template. Archive resolves those images to asset references and keeps the metadata plus the
+settings the user actually configured:
+
+```json
+{
+  "title": "Hello world",
+  "description": "…",
+  "images": { "seo": [ { "…asset ref…" } ] },
+  "settings": { "seoTitleSource": "fromCustom", "…" }
+}
+```
+
+The derived containers and template strings are left out; they describe how Craft renders
+the page, not what the content is.
 
 Rich text is exported with `parseRefs()` applied, so `{asset:14:url}` becomes the real URL
 rather than a Craft-only token.

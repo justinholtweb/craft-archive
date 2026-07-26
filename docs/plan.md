@@ -98,10 +98,23 @@ Also: an `ExportJob` with progress reporting and a "run in the background" optio
 export form, and console commands (`archive/export`, `archive/bundles`,
 `archive/bundles/prune`, `archive/bundles/delete`).
 
-### Phase 6 — field type coverage
-Value serializers for Matrix (recursive), Table, Hyper, Freelink, Google Maps, SEOMatic,
-Formie submissions, Commerce products/variants/orders — registered conditionally on
-`class_exists` so nothing hard-depends on them.
+### Phase 6 — field type coverage *(done)*
+A `ValueSerializerInterface` registry, extensible by event, with implementations for Hyper,
+FreeLink, Google Maps and SEOmatic. Each guards on `class_exists`, so they're inert when
+that plugin isn't installed and nothing hard-depends on them.
+
+These were the fields that exported as `raw` — technically present, practically useless:
+
+| Field | Was | Now |
+| --- | --- | --- |
+| Hyper | `"linkValue": [12]` | `target` ref with uid, title and URL |
+| FreeLink | `"value": null` for element links | same `link` shape as Hyper |
+| Google Maps | address mixed with local row/element/site/field IDs | address parts + `lat`/`lng` |
+| SEOmatic | 5KB bundle, images as Twig expressions | metadata + settings, images as asset refs |
+
+Matrix and Table were already covered by the built-in serializer. Formie submissions and
+Commerce products are element types rather than field types, so they belong to the
+collector registry — worth adding, but not in this phase.
 
 ### Phase 7 — polish
 `docs/FORMAT.md` finalised, `docs/EXTENDING.md` for the two registries, README, CHANGELOG,
