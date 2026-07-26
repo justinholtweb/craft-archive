@@ -116,9 +116,18 @@ Matrix and Table were already covered by the built-in serializer. Formie submiss
 Commerce products are element types rather than field types, so they belong to the
 collector registry — worth adding, but not in this phase.
 
-### Phase 7 — polish
-`docs/FORMAT.md` finalised, `docs/EXTENDING.md` for the two registries, README, CHANGELOG,
-unit tests for the serializers and writers, integration test that round-trips a real export.
+### Phase 7 — polish *(done)*
+`docs/FORMAT.md` finalised, `docs/EXTENDING.md` covering all three registries and the
+export events, README and CHANGELOG.
+
+Two test suites, because they need different things. **Unit** (26 tests, no Craft): the
+flattening rules, JSON-safe value conversion, and the record store — ordering, counts,
+newline-bearing values surviving a line-based format, repeat traversal, path safety and
+cleanup. **Integration**: real exports in every format against a live Craft, re-parsed and
+compared against the JSON reference.
+
+Testing the store this way meant taking Craft's `FileHelper` out of it, which was
+unnecessary coupling for what is plain file I/O.
 
 ## Non-goals
 

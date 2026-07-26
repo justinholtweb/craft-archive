@@ -2,7 +2,6 @@
 
 namespace justinholtweb\archive\models;
 
-use craft\helpers\FileHelper;
 use Generator;
 use RuntimeException;
 
@@ -29,7 +28,9 @@ class RecordStore
     public function __construct(
         private readonly string $dir,
     ) {
-        FileHelper::createDirectory($this->dir);
+        if (!is_dir($this->dir) && !@mkdir($this->dir, 0775, true) && !is_dir($this->dir)) {
+            throw new RuntimeException("Couldn’t create the spool directory at {$this->dir}.");
+        }
     }
 
     /**
@@ -159,9 +160,17 @@ class RecordStore
 
         $this->handles = [];
 
-        if (is_dir($this->dir)) {
-            FileHelper::removeDirectory($this->dir);
+        if (!is_dir($this->dir)) {
+            return;
         }
+
+        // The spool only ever holds files this class wrote, so a flat sweep is enough —
+        // and it keeps this class free of any dependency on a running Craft.
+        foreach (glob($this->dir . DIRECTORY_SEPARATOR . '*.ndjson') ?: [] as $file) {
+            @unlink($file);
+        }
+
+        @rmdir($this->dir);
     }
 
     /**

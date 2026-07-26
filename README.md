@@ -136,7 +136,18 @@ Event::on(WriterRegistry::class, WriterRegistry::EVENT_REGISTER_WRITERS,
     });
 ```
 
-`Export::EVENT_BEFORE_EXPORT` and `EVENT_AFTER_EXPORT` let you amend or cancel a run.
+There's a third registry for making your own field type's values portable, and
+`Export::EVENT_BEFORE_EXPORT` / `EVENT_AFTER_EXPORT` for amending or cancelling a run.
+[docs/EXTENDING.md](docs/EXTENDING.md) has working examples of all of it.
+
+## Tests
+
+```sh
+composer install && vendor/bin/phpunit                  # unit
+CRAFT_BASE_PATH=/path/to/project php tests/integration/export-roundtrip.php
+```
+
+See [tests/README.md](tests/README.md).
 
 ## Archive vs Transport
 
