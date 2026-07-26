@@ -1,38 +1,61 @@
 # Release Notes for Archive
 
-## Unreleased
+## 5.0.0 - 2026-07-26
 
-### Added
+Initial release. Archive exports everything on a Craft site into a portable, platform-neutral
+bundle, so the content can be migrated off Craft — or into anything else — without writing a
+scraper.
 
-- Initial release: export Craft content into portable, platform-neutral ZIP bundles.
-- Entry export with per-site records, relations, and portable field values.
-- Collectors for categories, tags, global sets, assets, users and addresses.
-- Asset files from local volumes are copied into bundles; remote volumes are referenced
-  by URL. Assets are collected in their own right, not just when something links to them.
-- A volumes filter on the export form, alongside the existing sections filter.
-- User accounts are excluded unless explicitly allowed, and password hashes are never
-  exported. Addresses belonging to a user account follow the same rule.
-- Five output formats: JSON, NDJSON, XML, YAML and CSV.
-- Schema export covering sites, sections, entry types, fields, category and tag groups,
-  volumes, filesystems, global sets, user groups with permissions, routes, the installed
-  plugin list and system settings. Filesystem credentials are never included.
-- `manifest.json` lists every asset file that made it into the bundle.
-- Exports stream: records are spooled to disk as they're collected and written back one at
-  a time, so memory stays flat regardless of how big the site is.
+The version number starts at 5.0.0 to track the major version of Craft it supports.
+
+### Content
+
+- Collectors for entries, categories, tags, global sets, assets, addresses and users.
+- Records are one element in one site: records sharing a `uid` and differing by `site` are
+  translations, which suits target platforms that don't share Craft's multi-site model.
+- Relations are extracted alongside field values, so an importer can wire content up
+  without walking every field.
+- Portable field values with a stable `kind` — `richText`, `relation`, `blocks`, `money`
+  and the rest — that an importer can switch on regardless of which plugin produced the
+  field. Rich text has its Craft reference tags resolved to real URLs.
+- Hyper, FreeLink, Google Maps and SEOmatic fields export as real data rather than the
+  Craft element IDs they store internally.
+
+### Formats
+
+- JSON, NDJSON, XML, YAML and CSV. `manifest.json` is always JSON, whichever you pick.
+- CSV gets one file per record type, a `relations.csv` join table, and the schema in its
+  own directory, since it can't nest.
+
+### Structure
+
+- The site's structure travels with the content: sites, sections, entry types, field
+  definitions, category and tag groups, volumes, filesystems, global sets, user groups with
+  their permissions, routes, the installed plugin list and system settings.
+- Filesystems are described by name and type only — never their settings, which is where
+  cloud credentials live.
+
+### Assets
+
+- Files on local volumes are copied into the bundle; files on remote filesystems are
+  referenced by URL so bundles stay small. Either can be overridden per export, and there's
+  a size ceiling above which files are referenced rather than copied.
+
+### Privacy
+
+- User accounts are excluded unless explicitly allowed, and don't appear as an option until
+  they are. Addresses belonging to a user account follow the same rule.
+- Password hashes are never exported, under any setting.
+
+### Scale
+
+- Exports stream. Records are spooled to disk as they're collected and written back one at
+  a time, so memory stays flat regardless of the size of the site.
 - Queued exports, with a "run in the background" option on the export screen.
 - Console commands: `archive/export`, `archive/bundles`, `archive/bundles/prune` and
   `archive/bundles/delete`.
-- Portable values for Hyper, FreeLink, Google Maps and SEOmatic fields, which previously
-  exported as opaque data containing Craft element IDs. Element links now carry a target
-  reference, and SEOmatic's images resolve to asset references.
 
-### Fixed
+### Extending
 
-- An asset reference could claim `bundled: true` for a file that never made it into the
-  bundle. References are written during collection, so the flag was a prediction; if the
-  copy failed afterwards — an unreachable remote filesystem, a missing file, a permissions
-  problem — the bundle described a file it didn't contain. Files are now copied as each
-  asset is encountered, so the flag reflects what actually happened.
-- JSON master data file plus a `manifest.json` describing every bundle.
-- Control panel export screen, bundle list with download and delete, and settings screen.
-- `archive:export` and `archive:manage` permissions.
+- Three event-driven registries — collectors, writers and value serializers — plus
+  before/after export events. See `docs/EXTENDING.md`.
