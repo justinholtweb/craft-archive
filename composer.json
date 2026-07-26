@@ -1,0 +1,74 @@
+{
+    "name": "justinholtweb/craft-archive",
+    "description": "Export everything on a Craft site — entries, assets, relations, users and settings — into portable JSON, XML, CSV, YAML or NDJSON bundles for migration to any platform.",
+    "type": "craft-plugin",
+    "version": "1.0.0",
+    "keywords": [
+        "craft",
+        "cms",
+        "craftcms",
+        "craft-plugin",
+        "archive",
+        "export",
+        "migration",
+        "backup",
+        "json",
+        "csv",
+        "xml"
+    ],
+    "license": "MIT",
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "authors": [
+        {
+            "name": "Justin Holt",
+            "homepage": "https://justinholt.com"
+        }
+    ],
+    "support": {
+        "docs": "https://github.com/justinholtweb/craft-archive/blob/main/README.md",
+        "source": "https://github.com/justinholtweb/craft-archive",
+        "issues": "https://github.com/justinholtweb/craft-archive/issues"
+    },
+    "require": {
+        "php": "^8.2",
+        "ext-dom": "*",
+        "ext-json": "*",
+        "ext-zip": "*",
+        "craftcms/cms": "^5.3.0"
+    },
+    "require-dev": {
+        "craftcms/ecs": "dev-main",
+        "craftcms/phpstan": "dev-main",
+        "phpunit/phpunit": "^10.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "justinholtweb\\archive\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "justinholtweb\\archive\\tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    },
+    "config": {
+        "allow-plugins": {
+            "yiisoft/yii2-composer": true,
+            "craftcms/plugin-installer": true,
+            "craftcms/generator": true
+        }
+    },
+    "extra": {
+        "name": "Archive",
+        "handle": "archive",
+        "developer": "Justin Holt",
+        "developerUrl": "https://justinholt.com",
+        "documentationUrl": "https://github.com/justinholtweb/craft-archive/blob/main/README.md",
+        "changelogUrl": "https://raw.githubusercontent.com/justinholtweb/craft-archive/main/CHANGELOG.md",
+        "class": "justinholtweb\\archive\\Plugin"
+    }
+}

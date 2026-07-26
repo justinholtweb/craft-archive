@@ -1,0 +1,125 @@
+{% import "_includes/forms" as forms %}
+
+{% set formatChoices = [] %}
+{% for key, label in formatOptions %}
+    {% set formatChoices = formatChoices|merge([{ label: label, value: key }]) %}
+{% endfor %}
+
+{{ forms.selectField({
+    label: "Default format"|t('archive'),
+    instructions: "Pre-selected on the export screen."|t('archive'),
+    id: 'defaultFormat',
+    name: 'settings[defaultFormat]',
+    options: formatChoices,
+    value: settings.defaultFormat,
+}) }}
+
+{{ forms.autosuggestField({
+    label: "Bundle path"|t('archive'),
+    instructions: "Where finished bundles are kept. Aliases and environment variables are supported."|t('archive'),
+    id: 'bundlePath',
+    name: 'settings[bundlePath]',
+    value: settings.bundlePath,
+    suggestEnvVars: true,
+    suggestAliases: true,
+}) }}
+
+{{ forms.autosuggestField({
+    label: "Staging path"|t('archive'),
+    instructions: "Where bundles are assembled before being zipped. Cleared after every run."|t('archive'),
+    id: 'tempPath',
+    name: 'settings[tempPath]',
+    value: settings.tempPath,
+    suggestEnvVars: true,
+    suggestAliases: true,
+}) }}
+
+<hr>
+
+{{ forms.lightswitchField({
+    label: "Include asset files by default"|t('archive'),
+    instructions: "Copies files from local volumes into bundles."|t('archive'),
+    id: 'includeAssetFiles',
+    name: 'settings[includeAssetFiles]',
+    on: settings.includeAssetFiles,
+}) }}
+
+{{ forms.lightswitchField({
+    label: "Download remote asset files by default"|t('archive'),
+    instructions: "Leave this off unless you need the bytes: assets on S3, Spaces and other remote filesystems are referenced by URL so bundles stay small."|t('archive'),
+    id: 'downloadRemoteAssets',
+    name: 'settings[downloadRemoteAssets]',
+    on: settings.downloadRemoteAssets,
+}) }}
+
+{{ forms.textField({
+    label: "Maximum asset file size"|t('archive'),
+    instructions: "In megabytes. Larger files are referenced by URL rather than copied. 0 removes the limit."|t('archive'),
+    id: 'maxAssetFileSize',
+    name: 'settings[maxAssetFileSize]',
+    value: settings.maxAssetFileSize,
+    type: 'number',
+    size: 8,
+}) }}
+
+{{ forms.lightswitchField({
+    label: "Include the site’s structure by default"|t('archive'),
+    instructions: "Writes sections, entry types, field definitions, volumes and groups to each bundle’s schema/ directory."|t('archive'),
+    id: 'includeSchema',
+    name: 'settings[includeSchema]',
+    on: settings.includeSchema,
+}) }}
+
+{{ forms.lightswitchField({
+    label: "Allow user accounts to be exported"|t('archive'),
+    instructions: "Off by default: a bundle is a downloadable ZIP, and user records contain personal data. Password hashes are never exported, whatever this is set to."|t('archive'),
+    id: 'allowUserExport',
+    name: 'settings[allowUserExport]',
+    on: settings.allowUserExport,
+}) }}
+
+<hr>
+
+{{ forms.textField({
+    label: "Keep bundles for"|t('archive'),
+    instructions: "Days. 0 keeps them indefinitely."|t('archive'),
+    id: 'retentionDays',
+    name: 'settings[retentionDays]',
+    value: settings.retentionDays,
+    type: 'number',
+    size: 8,
+}) }}
+
+{{ forms.textField({
+    label: "Maximum bundles to keep"|t('archive'),
+    instructions: "Regardless of age. 0 keeps them all."|t('archive'),
+    id: 'retentionCount',
+    name: 'settings[retentionCount]',
+    value: settings.retentionCount,
+    type: 'number',
+    size: 8,
+}) }}
+
+{{ forms.textField({
+    label: "Batch size"|t('archive'),
+    instructions: "How many elements are loaded at a time while exporting. Lower this if a big export runs out of memory."|t('archive'),
+    id: 'batchSize',
+    name: 'settings[batchSize]',
+    value: settings.batchSize,
+    type: 'number',
+    size: 8,
+}) }}
+
+{{ forms.selectField({
+    label: "Log level"|t('archive'),
+    instructions: "Archive logs to storage/logs/archive.log."|t('archive'),
+    id: 'logLevel',
+    name: 'settings[logLevel]',
+    options: [
+        { label: 'Error', value: 'error' },
+        { label: 'Warning', value: 'warning' },
+        { label: 'Info', value: 'info' },
+        { label: 'Debug', value: 'debug' },
+    ],
+    value: settings.logLevel,
+}) }}

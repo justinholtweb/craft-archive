@@ -1,0 +1,104 @@
+{% extends "_layouts/cp" %}
+
+{% set title = bundle.name %}
+{% set crumbs = [
+    { label: "Archive"|t('archive'), url: url('archive') },
+    { label: "Bundles"|t('archive'), url: url('archive/bundles') },
+] %}
+
+{% block content %}
+    <div class="meta read-only">
+        <div class="data">
+            <h5 class="heading">{{ "Status"|t('archive') }}</h5>
+            <div class="value">{{ bundle.status }}</div>
+        </div>
+        <div class="data">
+            <h5 class="heading">{{ "Created"|t('archive') }}</h5>
+            <div class="value">{{ bundle.dateCreated|datetime('short') }}</div>
+        </div>
+        <div class="data">
+            <h5 class="heading">{{ "Format"|t('archive') }}</h5>
+            <div class="value">{{ bundle.format|upper }}</div>
+        </div>
+        <div class="data">
+            <h5 class="heading">{{ "File"|t('archive') }}</h5>
+            <div class="value">
+                {% if exists %}
+                    {{ bundle.filename }} ({{ bundle.size|filesize }})
+                {% else %}
+                    {{ "No longer on disk"|t('archive') }}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <h2>{{ "Contents"|t('archive') }}</h2>
+    {% if bundle.countsArray|length %}
+        <table class="data fullwidth">
+            <tbody>
+                {% for type, count in bundle.countsArray %}
+                    <tr>
+                        <th>{{ type }}</th>
+                        <td>{{ count }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>{{ "Nothing was collected."|t('archive') }}</p>
+    {% endif %}
+
+    {% if bundle.error %}
+        <h2>{{ "Error"|t('archive') }}</h2>
+        <blockquote class="note error"><p>{{ bundle.error }}</p></blockquote>
+    {% endif %}
+
+    {% if bundle.warningsArray|length %}
+        <h2>{{ "Warnings"|t('archive') }}</h2>
+        <p>{{ "These are things Archive couldn’t represent losslessly. The bundle is still usable."|t('archive') }}</p>
+        <ul class="bullets">
+            {% for warning in bundle.warningsArray %}
+                <li>{{ warning }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <h2>{{ "Options"|t('archive') }}</h2>
+    <table class="data fullwidth">
+        <tbody>
+            {% for key, value in bundle.configArray %}
+                <tr>
+                    <th>{{ key }}</th>
+                    <td>
+                        {%- if value is iterable -%}
+                            {{ value|join(', ') ?: '—' }}
+                        {%- elseif value is same as(true) -%}
+                            {{ "Yes"|t('archive') }}
+                        {%- elseif value is same as(false) -%}
+                            {{ "No"|t('archive') }}
+                        {%- else -%}
+                            {{ value ?? '—' }}
+                        {%- endif -%}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if canManage and exists %}
+        <div class="buttons">
+            <a class="btn submit" href="{{ actionUrl('archive/bundles/download', { id: bundle.id }) }}">
+                {{ "Download"|t('archive') }}
+            </a>
+            <form method="post" style="display:inline-block; margin:0;">
+                {{ csrfInput() }}
+                {{ redirectInput('archive/bundles') }}
+                <input type="hidden" name="action" value="archive/bundles/delete">
+                <input type="hidden" name="id" value="{{ bundle.id }}">
+                <button type="submit" class="btn" data-confirm="{{ 'Delete this bundle?'|t('archive') }}">
+                    {{ "Delete"|t('archive') }}
+                </button>
+            </form>
+        </div>
+    {% endif %}
+{% endblock %}

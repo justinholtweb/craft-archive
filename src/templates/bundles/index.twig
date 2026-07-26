@@ -1,0 +1,72 @@
+{% extends "_layouts/cp" %}
+
+{% set title = "Bundles"|t('archive') %}
+
+{% set statusColors = {
+    completed: 'green',
+    failed: 'red',
+    running: 'orange',
+    pending: 'light',
+} %}
+
+{% block content %}
+    {% if bundles|length %}
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th>{{ "Bundle"|t('archive') }}</th>
+                    <th>{{ "Created"|t('archive') }}</th>
+                    <th>{{ "Format"|t('archive') }}</th>
+                    <th>{{ "Contents"|t('archive') }}</th>
+                    <th>{{ "Size"|t('archive') }}</th>
+                    <th>{{ "Status"|t('archive') }}</th>
+                    <th class="thin"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bundle in bundles %}
+                    <tr>
+                        <td><a href="{{ url('archive/bundles/' ~ bundle.id) }}">{{ bundle.name }}</a></td>
+                        <td>{{ bundle.dateCreated|datetime('short') }}</td>
+                        <td>{{ bundle.format|upper }}</td>
+                        <td>
+                            {%- for type, count in bundle.countsArray -%}
+                                {{ type }}: {{ count }}{% if not loop.last %}, {% endif %}
+                            {%- else -%}
+                                —
+                            {%- endfor -%}
+                        </td>
+                        <td>{{ bundle.size ? bundle.size|filesize : '—' }}</td>
+                        <td>
+                            <span class="status {{ statusColors[bundle.status] ?? 'light' }}"></span>
+                            {{ bundle.status }}
+                            {% if bundle.warningsArray|length %}
+                                <span class="warning-icon" title="{{ bundle.warningsArray|length }} {{ 'warning(s)'|t('archive') }}">⚠</span>
+                            {% endif %}
+                        </td>
+                        <td class="thin nowrap">
+                            {% if canManage and onDisk[bundle.id] %}
+                                <a class="btn small" href="{{ actionUrl('archive/bundles/download', { id: bundle.id }) }}">
+                                    {{ "Download"|t('archive') }}
+                                </a>
+                                <form method="post" style="display:inline-block; margin:0;">
+                                    {{ csrfInput() }}
+                                    {{ redirectInput('archive/bundles') }}
+                                    <input type="hidden" name="action" value="archive/bundles/delete">
+                                    <input type="hidden" name="id" value="{{ bundle.id }}">
+                                    <button type="submit" class="btn small"
+                                        data-confirm="{{ 'Delete this bundle?'|t('archive') }}">
+                                        {{ "Delete"|t('archive') }}
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>{{ "No bundles yet."|t('archive') }}</p>
+        <p><a class="btn submit" href="{{ url('archive/export') }}">{{ "Create one"|t('archive') }}</a></p>
+    {% endif %}
+{% endblock %}

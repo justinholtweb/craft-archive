@@ -1,0 +1,121 @@
+{% extends "_layouts/cp" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "Export"|t('archive') %}
+
+{% block content %}
+    <form method="post" accept-charset="UTF-8">
+        {{ csrfInput() }}
+        <input type="hidden" name="action" value="archive/export/run">
+
+        <p>
+            {{ "Package this site’s content into a portable bundle you can hand to any other platform. Bundles are ZIP files containing a master data file, the site’s structure, and asset files from local volumes."|t('archive') }}
+        </p>
+
+        {% set typeChoices = [] %}
+        {% for key, label in typeOptions %}
+            {% set typeChoices = typeChoices|merge([{ label: label, value: key }]) %}
+        {% endfor %}
+
+        {{ forms.checkboxGroupField({
+            label: "Content"|t('archive'),
+            instructions: "What to include in the bundle."|t('archive'),
+            name: 'types',
+            options: typeChoices,
+            values: config.types,
+        }) }}
+
+        {% set formatChoices = [] %}
+        {% for key, label in formatOptions %}
+            {% set formatChoices = formatChoices|merge([{ label: label, value: key }]) %}
+        {% endfor %}
+
+        {{ forms.selectField({
+            label: "Format"|t('archive'),
+            instructions: "The format of the bundle’s master data file. manifest.json is always JSON, whichever you pick."|t('archive'),
+            name: 'format',
+            options: formatChoices,
+            value: config.format,
+        }) }}
+
+        {% set siteChoices = [] %}
+        {% for site in sites %}
+            {% set siteChoices = siteChoices|merge([{ label: site.name, value: site.handle }]) %}
+        {% endfor %}
+
+        {{ forms.checkboxGroupField({
+            label: "Sites"|t('archive'),
+            instructions: "Leave empty to export the primary site only. Each site produces its own set of records, linked by uid."|t('archive'),
+            name: 'siteHandles',
+            options: siteChoices,
+            values: config.siteHandles,
+        }) }}
+
+        {% set sectionChoices = [] %}
+        {% for section in sections %}
+            {% set sectionChoices = sectionChoices|merge([{ label: section.name, value: section.handle }]) %}
+        {% endfor %}
+
+        {{ forms.checkboxGroupField({
+            label: "Sections"|t('archive'),
+            instructions: "Leave empty to export every section."|t('archive'),
+            name: 'sectionHandles',
+            options: sectionChoices,
+            values: config.sectionHandles,
+        }) }}
+
+        {{ forms.textField({
+            label: "Bundle name"|t('archive'),
+            instructions: "Optional. Generated from the system name and the current time when left blank."|t('archive'),
+            name: 'name',
+            value: config.name,
+            placeholder: 'my-site-export',
+        }) }}
+
+        <hr>
+
+        {{ forms.lightswitchField({
+            label: "Include disabled elements"|t('archive'),
+            name: 'includeDisabled',
+            on: config.includeDisabled,
+        }) }}
+
+        {{ forms.lightswitchField({
+            label: "Include the site’s structure"|t('archive'),
+            instructions: "Writes sections, entry types, field definitions, volumes and groups to schema/ so the content model travels with the content."|t('archive'),
+            name: 'includeSchema',
+            on: config.includeSchema,
+        }) }}
+
+        {{ forms.lightswitchField({
+            label: "Include asset files"|t('archive'),
+            instructions: "Copies files from local volumes into the bundle. Turn this off to export asset metadata and URLs only."|t('archive'),
+            name: 'includeAssetFiles',
+            on: config.includeAssetFiles,
+        }) }}
+
+        {{ forms.lightswitchField({
+            label: "Download remote asset files"|t('archive'),
+            instructions: "Off by default: assets on S3, Spaces and other remote filesystems are referenced by URL so the bundle stays small. Turning this on downloads every one of them."|t('archive'),
+            name: 'downloadRemoteAssets',
+            on: config.downloadRemoteAssets,
+        }) }}
+
+        {{ forms.textField({
+            label: "Limit"|t('archive'),
+            instructions: "Optional cap on how many elements are exported per type — handy for trying a bundle out before running the whole site."|t('archive'),
+            name: 'limit',
+            value: config.limit,
+            size: 8,
+            type: 'number',
+        }) }}
+
+        <div class="buttons">
+            <button type="submit" class="btn submit">{{ "Create bundle"|t('archive') }}</button>
+        </div>
+
+        <p class="light">
+            {{ "Exports run in this request, so a very large site may take a while."|t('archive') }}
+        </p>
+    </form>
+{% endblock %}

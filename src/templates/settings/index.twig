@@ -1,0 +1,20 @@
+{% extends "_layouts/cp" %}
+
+{% set title = "Settings"|t('archive') %}
+
+{% block content %}
+    <form method="post" accept-charset="UTF-8">
+        {{ csrfInput() }}
+        {{ redirectInput('archive/settings') }}
+        <input type="hidden" name="action" value="archive/settings/save">
+
+        {% include "archive/_settings" with {
+            settings: settings,
+            formatOptions: formatOptions,
+        } only %}
+
+        <div class="buttons">
+            <button type="submit" class="btn submit">{{ "Save"|t('archive') }}</button>
+        </div>
+    </form>
+{% endblock %}
