@@ -8,7 +8,9 @@ use craft\helpers\Json;
 use justinholtweb\archive\events\ExportEvent;
 use justinholtweb\archive\models\ExportConfig;
 use justinholtweb\archive\models\ExportContext;
+use justinholtweb\archive\models\RecordStore;
 use justinholtweb\archive\Plugin;
+use justinholtweb\archive\queue\ExportJob;
 use justinholtweb\archive\records\BundleRecord;
 use RuntimeException;
 use Throwable;
@@ -32,8 +34,11 @@ class Export extends Component
 
     /**
      * Produces a bundle, returning its ledger row.
+     *
+     * @param callable(string, int): void|null $onProgress Called as each record is
+     *        collected, with the record type and the running total.
      */
-    public function run(ExportConfig $config): BundleRecord
+    public function run(ExportConfig $config, ?callable $onProgress = null): BundleRecord
     {
         $plugin = Plugin::getInstance();
         $name = $config->resolveName();
@@ -47,7 +52,9 @@ class Export extends Component
         ]);
         $record->save(false);
 
-        $context = new ExportContext($config);
+        $store = new RecordStore($plugin->builder->createSpoolDir($name));
+        $context = new ExportContext($config, $store);
+        $context->onRecord = $onProgress;
         $stagingDir = null;
 
         $event = new ExportEvent(['config' => $config, 'context' => $context]);
@@ -117,6 +124,8 @@ class Export extends Component
 
             throw $e;
         } finally {
+            $store->cleanup();
+
             if ($stagingDir !== null) {
                 $plugin->builder->cleanup($stagingDir);
             }
@@ -147,12 +156,46 @@ class Export extends Component
                 continue;
             }
 
-            $collector->collect($context);
+            // Registered up front so a type that matches nothing still shows up in the
+            // manifest as zero, rather than vanishing.
+            $context->records->register($key);
 
-            // Make sure a type that matched nothing still shows up in the manifest as zero,
-            // rather than vanishing.
-            $context->records[$key] ??= [];
+            $collector->collect($context);
         }
+    }
+
+    /**
+     * Pushes an export onto the queue and returns the job ID.
+     */
+    public function queue(ExportConfig $config): ?int
+    {
+        return Craft::$app->getQueue()->push(new ExportJob([
+            'config' => $config->toArray(),
+            'estimate' => $this->estimate($config),
+            'description' => Craft::t('archive', 'Building bundle “{name}”', [
+                'name' => $config->resolveName(),
+            ]),
+        ]));
+    }
+
+    /**
+     * Roughly how many records a config will produce. Counts rather than collects, so it's
+     * cheap enough to run before queueing.
+     */
+    public function estimate(ExportConfig $config): int
+    {
+        $registry = Plugin::getInstance()->collectors;
+        $total = 0;
+
+        foreach ($config->types as $key) {
+            try {
+                $total += $registry->get($key)?->estimate($config) ?? 0;
+            } catch (Throwable $e) {
+                Craft::warning("Couldn’t estimate $key: {$e->getMessage()}", Plugin::LOG_CATEGORY);
+            }
+        }
+
+        return $total;
     }
 
     /**

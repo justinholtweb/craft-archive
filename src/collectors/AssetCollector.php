@@ -8,6 +8,7 @@ use craft\elements\Asset;
 use craft\elements\db\ElementQueryInterface;
 use craft\models\Site;
 use justinholtweb\archive\helpers\ValueHelper;
+use justinholtweb\archive\models\ExportConfig;
 use justinholtweb\archive\models\ExportContext;
 use justinholtweb\archive\Plugin;
 
@@ -38,9 +39,9 @@ class AssetCollector extends BaseCollector
         return Craft::t('archive', 'Assets');
     }
 
-    protected function query(ExportContext $context, Site $site): ?ElementQueryInterface
+    protected function query(ExportConfig $config, Site $site): ?ElementQueryInterface
     {
-        $handles = $context->config->volumeHandles ?: array_map(
+        $handles = $config->volumeHandles ?: array_map(
             fn($volume) => $volume->handle,
             Craft::$app->getVolumes()->getAllVolumes()
         );
@@ -52,7 +53,7 @@ class AssetCollector extends BaseCollector
         return Asset::find()
             ->siteId($site->id)
             ->volume($handles)
-            ->status($context->config->includeDisabled ? null : 'enabled')
+            ->status($config->includeDisabled ? null : 'enabled')
             ->unique(false);
     }
 

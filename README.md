@@ -58,6 +58,27 @@ schema in its own directory. Values that won't flatten are JSON-encoded into the
 
 The full specification is in [docs/FORMAT.md](docs/FORMAT.md).
 
+## From the command line
+
+```sh
+php craft archive/export
+php craft archive/export --types=entries,assets --format=csv
+php craft archive/export --sites=default,fr --sections=news --name=news-only
+php craft archive/export --queue          # hand it to the queue instead
+
+php craft archive/bundles                 # list them
+php craft archive/bundles/prune           # apply the retention settings
+php craft archive/bundles/delete 4
+```
+
+## Big sites
+
+Exports stream. Records are spooled to disk as they're collected and written back one at a
+time, so memory stays flat however large the site is — 50,000 records add no measurable
+memory over Craft's own footprint. There's a **Run in the background** option on the export
+screen (and `--queue` on the console command) for exports that would otherwise outlast a
+web request.
+
 ## Assets
 
 Files on **local** volumes are copied into the bundle. Files on **remote** filesystems —

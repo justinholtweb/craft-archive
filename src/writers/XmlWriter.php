@@ -3,14 +3,16 @@
 namespace justinholtweb\archive\writers;
 
 use Craft;
-use DOMDocument;
-use DOMElement;
 use justinholtweb\archive\models\ExportContext;
 use justinholtweb\archive\services\BundleBuilder;
 use RuntimeException;
+use XMLWriter as XmlStream;
 
 /**
  * The same document as the JSON writer, as XML.
+ *
+ * Built with PHP's streaming XMLWriter rather than a DOM tree, so the whole document never
+ * exists in memory at once.
  *
  * Conventions, so a reader knows what it's looking at:
  *
@@ -36,103 +38,112 @@ class XmlWriter extends BaseWriter
 
     public function write(ExportContext $context, string $stagingDir): array
     {
-        $document = new DOMDocument('1.0', 'UTF-8');
-        $document->formatOutput = true;
+        $path = 'data/archive.xml';
+        $target = $stagingDir . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $path);
 
-        $root = $document->createElement('archive');
-        $root->setAttribute('formatVersion', BundleBuilder::FORMAT_VERSION);
-        $document->appendChild($root);
+        \craft\helpers\FileHelper::createDirectory(dirname($target));
 
-        $this->appendValue($document, $root, 'meta', $context->meta);
+        $xml = new XmlStream();
+
+        if ($xml->openUri($target) === false) {
+            throw new RuntimeException("Couldn’t open $path for writing.");
+        }
+
+        $xml->setIndent(true);
+        $xml->setIndentString('  ');
+        $xml->startDocument('1.0', 'UTF-8');
+
+        $xml->startElement('archive');
+        $xml->writeAttribute('formatVersion', BundleBuilder::FORMAT_VERSION);
+
+        $this->writeValue($xml, 'meta', $context->meta);
 
         if ($context->schema) {
-            $this->appendValue($document, $root, 'schema', $context->schema);
+            $this->writeValue($xml, 'schema', $context->schema);
         }
 
-        $records = $document->createElement('records');
-        $root->appendChild($records);
+        $xml->startElement('records');
 
-        foreach ($context->records as $type => $items) {
-            foreach ($items as $record) {
-                $element = $document->createElement('record');
-                $element->setAttribute('type', $type);
-                $records->appendChild($element);
-
-                $this->appendChildren($document, $element, $record);
-            }
+        foreach ($context->records->eachOfAll() as [$type, $record]) {
+            $xml->startElement('record');
+            $xml->writeAttribute('type', $type);
+            $this->writeChildren($xml, $record);
+            $xml->endElement();
         }
 
-        $xml = $document->saveXML();
+        $xml->endElement(); // records
+        $xml->endElement(); // archive
+        $xml->endDocument();
+        $xml->flush();
 
-        if ($xml === false) {
-            throw new RuntimeException('Couldn’t serialize the bundle as XML.');
-        }
-
-        return [$this->put($stagingDir, 'data/archive.xml', $xml)];
+        return [$path];
     }
 
     /**
-     * Appends a value under a named element.
+     * Writes a value under a named element.
      */
-    private function appendValue(DOMDocument $document, DOMElement $parent, string $name, mixed $value): void
+    private function writeValue(XmlStream $xml, string $name, mixed $value): void
     {
         [$tag, $keyAttribute] = $this->tagFor($name);
 
-        $element = $document->createElement($tag);
+        $xml->startElement($tag);
 
         if ($keyAttribute !== null) {
-            $element->setAttribute('key', $keyAttribute);
+            $xml->writeAttribute('key', $keyAttribute);
         }
 
-        $parent->appendChild($element);
-
         if ($value === null) {
-            $element->setAttribute('nil', 'true');
+            $xml->writeAttribute('nil', 'true');
+            $xml->endElement();
             return;
         }
 
         if (is_array($value)) {
             if (array_is_list($value)) {
                 foreach ($value as $item) {
-                    $this->appendValue($document, $element, 'item', $item);
+                    $this->writeValue($xml, 'item', $item);
                 }
             } else {
-                $this->appendChildren($document, $element, $value);
+                $this->writeChildren($xml, $value);
             }
+
+            $xml->endElement();
             return;
         }
 
-        $element->appendChild($this->textNode($document, $value));
+        $this->writeText($xml, $value);
+        $xml->endElement();
     }
 
     /**
-     * Appends every key of an associative array as a child element.
+     * Writes every key of an associative array as a child element.
      */
-    private function appendChildren(DOMDocument $document, DOMElement $parent, array $data): void
+    private function writeChildren(XmlStream $xml, array $data): void
     {
         foreach ($data as $key => $value) {
-            $this->appendValue($document, $parent, (string)$key, $value);
+            $this->writeValue($xml, (string)$key, $value);
         }
     }
 
     /**
-     * Turns a scalar into a text node, reaching for CDATA when the value contains markup
-     * or line breaks.
+     * Writes a scalar, reaching for CDATA when the value contains markup or line breaks.
      */
-    private function textNode(DOMDocument $document, mixed $value): \DOMNode
+    private function writeText(XmlStream $xml, mixed $value): void
     {
         if (is_bool($value)) {
-            return $document->createTextNode($value ? 'true' : 'false');
+            $xml->text($value ? 'true' : 'false');
+            return;
         }
 
         $string = (string)$value;
 
         if (preg_match('/[<>&]|\R/', $string) === 1) {
             // CDATA can't contain the closing sequence, so split it across two sections.
-            return $document->createCDATASection(str_replace(']]>', ']]]]><![CDATA[>', $string));
+            $xml->writeCdata(str_replace(']]>', ']]]]><![CDATA[>', $string));
+            return;
         }
 
-        return $document->createTextNode($string);
+        $xml->text($string);
     }
 
     /**

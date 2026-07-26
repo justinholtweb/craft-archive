@@ -20,15 +20,32 @@ class BundleBuilder extends Component
     public const FORMAT_VERSION = '1.0';
 
     /**
-     * Creates an empty staging directory for a run.
+     * Creates an empty staging directory for a run. Everything in here ends up in the ZIP.
      */
     public function createStagingDir(string $name): string
     {
+        return $this->createTempDir($name, 'staging');
+    }
+
+    /**
+     * Creates a scratch directory for spooled records.
+     *
+     * Deliberately a sibling of the staging directory rather than a child: the staging
+     * directory is zipped wholesale, and the spool is working state, not bundle content.
+     */
+    public function createSpoolDir(string $name): string
+    {
+        return $this->createTempDir($name, 'spool');
+    }
+
+    private function createTempDir(string $name, string $purpose): string
+    {
         $dir = sprintf(
-            '%s%s%s-%s',
+            '%s%s%s-%s-%s',
             rtrim(Plugin::getInstance()->getSettings()->getResolvedTempPath(), '/\\'),
             DIRECTORY_SEPARATOR,
             $this->safeName($name),
+            $purpose,
             StringHelper::randomString(8)
         );
 

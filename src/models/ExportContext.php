@@ -8,15 +8,12 @@ use craft\elements\Asset;
  * The mutable state of one export run: the records collected so far, the asset files
  * queued for bundling, and anything Archive couldn't fully represent.
  *
- * Collectors, the field serializer and the writers all share this.
+ * Collectors, the field serializer and the writers all share this. Records themselves live
+ * in a {@see RecordStore} on disk rather than on this object, so a large export doesn't
+ * grow with the size of the site.
  */
 class ExportContext
 {
-    /**
-     * @var array<string, list<array>> Records keyed by collector key.
-     */
-    public array $records = [];
-
     /**
      * @var array<string, mixed> Site structure, when schema export is enabled.
      */
@@ -49,14 +46,26 @@ class ExportContext
         'bytes' => 0,
     ];
 
+    /**
+     * Called after each record is collected, for progress reporting.
+     *
+     * @var callable(string, int): void|null
+     */
+    public $onRecord = null;
+
     public function __construct(
         public ExportConfig $config,
+        public RecordStore $records,
     ) {
     }
 
     public function addRecord(string $type, array $record): void
     {
-        $this->records[$type][] = $record;
+        $this->records->add($type, $record);
+
+        if ($this->onRecord !== null) {
+            ($this->onRecord)($type, $this->records->total());
+        }
     }
 
     /**
@@ -75,11 +84,11 @@ class ExportContext
      */
     public function counts(): array
     {
-        return array_map('count', $this->records);
+        return $this->records->counts();
     }
 
     public function totalRecords(): int
     {
-        return array_sum($this->counts());
+        return $this->records->total();
     }
 }

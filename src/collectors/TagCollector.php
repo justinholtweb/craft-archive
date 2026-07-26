@@ -8,6 +8,7 @@ use craft\elements\db\ElementQueryInterface;
 use craft\elements\Tag;
 use craft\models\Site;
 use justinholtweb\archive\helpers\ValueHelper;
+use justinholtweb\archive\models\ExportConfig;
 use justinholtweb\archive\models\ExportContext;
 
 /**
@@ -25,7 +26,7 @@ class TagCollector extends BaseCollector
         return Craft::t('archive', 'Tags');
     }
 
-    protected function query(ExportContext $context, Site $site): ?ElementQueryInterface
+    protected function query(ExportConfig $config, Site $site): ?ElementQueryInterface
     {
         $handles = array_map(
             fn($group) => $group->handle,
@@ -39,7 +40,7 @@ class TagCollector extends BaseCollector
         return Tag::find()
             ->siteId($site->id)
             ->group($handles)
-            ->status($context->config->includeDisabled ? null : 'enabled')
+            ->status($config->includeDisabled ? null : 'enabled')
             ->unique(false);
     }
 

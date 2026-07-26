@@ -10,6 +10,7 @@ use craft\elements\User;
 use craft\models\Site;
 use justinholtweb\archive\helpers\RefHelper;
 use justinholtweb\archive\helpers\ValueHelper;
+use justinholtweb\archive\models\ExportConfig;
 use justinholtweb\archive\models\ExportContext;
 use justinholtweb\archive\Plugin;
 use Throwable;
@@ -38,7 +39,7 @@ class AddressCollector extends BaseCollector
         return false;
     }
 
-    protected function query(ExportContext $context, Site $site): ?ElementQueryInterface
+    protected function query(ExportConfig $config, Site $site): ?ElementQueryInterface
     {
         return Address::find()->status(null);
     }

@@ -9,6 +9,7 @@ use craft\elements\Entry;
 use craft\models\Site;
 use justinholtweb\archive\helpers\RefHelper;
 use justinholtweb\archive\helpers\ValueHelper;
+use justinholtweb\archive\models\ExportConfig;
 use justinholtweb\archive\models\ExportContext;
 use Throwable;
 
@@ -30,9 +31,9 @@ class EntryCollector extends BaseCollector
         return Craft::t('archive', 'Entries');
     }
 
-    protected function query(ExportContext $context, Site $site): ?ElementQueryInterface
+    protected function query(ExportConfig $config, Site $site): ?ElementQueryInterface
     {
-        $handles = $context->config->sectionHandles ?: $this->allSectionHandles();
+        $handles = $config->sectionHandles ?: $this->allSectionHandles();
 
         if (!$handles) {
             return null;
@@ -43,7 +44,7 @@ class EntryCollector extends BaseCollector
             // Scoping to sections is also what keeps nested Matrix entries out: those have
             // no section of their own.
             ->section($handles)
-            ->status($context->config->includeDisabled ? null : ['live', 'pending', 'expired'])
+            ->status($config->includeDisabled ? null : ['live', 'pending', 'expired'])
             ->drafts(false)
             ->revisions(false)
             ->provisionalDrafts(false)

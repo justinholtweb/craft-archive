@@ -123,12 +123,15 @@
             type: 'number',
         }) }}
 
+        {{ forms.lightswitchField({
+            label: "Run in the background"|t('archive'),
+            instructions: "Queues the export instead of running it now. Worth turning on for a large site, which can otherwise outlast the request."|t('archive'),
+            name: 'runInBackground',
+            on: false,
+        }) }}
+
         <div class="buttons">
             <button type="submit" class="btn submit">{{ "Create bundle"|t('archive') }}</button>
         </div>
-
-        <p class="light">
-            {{ "Exports run in this request, so a very large site may take a while."|t('archive') }}
-        </p>
     </form>
 {% endblock %}

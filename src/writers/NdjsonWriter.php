@@ -4,7 +4,6 @@ namespace justinholtweb\archive\writers;
 
 use Craft;
 use justinholtweb\archive\models\ExportContext;
-use RuntimeException;
 
 /**
  * Newline-delimited JSON: one self-describing object per line.
@@ -27,39 +26,38 @@ class NdjsonWriter extends BaseWriter
 
     public function write(ExportContext $context, string $stagingDir): array
     {
-        $lines = [];
+        $path = 'data/archive.ndjson';
+        $handle = $this->open($stagingDir, $path);
 
-        $lines[] = $this->line(['_type' => 'meta', 'meta' => $context->meta]);
+        try {
+            $this->line($handle, ['_type' => 'meta', 'meta' => $context->meta]);
 
-        if ($context->schema) {
-            $lines[] = $this->line(['_type' => 'schema', 'schema' => $context->schema]);
-        }
+            if ($context->schema) {
+                $this->line($handle, ['_type' => 'schema', 'schema' => $context->schema]);
+            }
 
-        foreach ($context->records as $type => $records) {
-            foreach ($records as $record) {
-                $lines[] = $this->line([
+            foreach ($context->records->eachOfAll() as [$type, $record]) {
+                $this->line($handle, [
                     '_type' => 'record',
                     'recordType' => $type,
                     'record' => $record,
                 ]);
             }
+        } finally {
+            fclose($handle);
         }
 
-        return [$this->put($stagingDir, 'data/archive.ndjson', implode("\n", $lines) . "\n")];
+        return [$path];
     }
 
     /**
      * One line of NDJSON. Newlines inside values are escaped by json_encode, so a line
      * always stays a line.
+     *
+     * @param resource $handle
      */
-    private function line(array $data): string
+    private function line($handle, array $data): void
     {
-        $json = json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-
-        if ($json === false) {
-            throw new RuntimeException('Couldn’t encode an NDJSON line: ' . json_last_error_msg());
-        }
-
-        return $json;
+        $this->emit($handle, $this->encode($data) . "\n");
     }
 }

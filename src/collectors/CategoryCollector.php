@@ -9,6 +9,7 @@ use craft\elements\db\ElementQueryInterface;
 use craft\models\Site;
 use justinholtweb\archive\helpers\RefHelper;
 use justinholtweb\archive\helpers\ValueHelper;
+use justinholtweb\archive\models\ExportConfig;
 use justinholtweb\archive\models\ExportContext;
 use Throwable;
 
@@ -27,7 +28,7 @@ class CategoryCollector extends BaseCollector
         return Craft::t('archive', 'Categories');
     }
 
-    protected function query(ExportContext $context, Site $site): ?ElementQueryInterface
+    protected function query(ExportConfig $config, Site $site): ?ElementQueryInterface
     {
         $handles = array_map(
             fn($group) => $group->handle,
@@ -41,7 +42,7 @@ class CategoryCollector extends BaseCollector
         return Category::find()
             ->siteId($site->id)
             ->group($handles)
-            ->status($context->config->includeDisabled ? null : 'enabled')
+            ->status($config->includeDisabled ? null : 'enabled')
             ->unique(false);
     }
 

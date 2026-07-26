@@ -17,6 +17,11 @@
   volumes, filesystems, global sets, user groups with permissions, routes, the installed
   plugin list and system settings. Filesystem credentials are never included.
 - `manifest.json` lists every asset file that made it into the bundle.
+- Exports stream: records are spooled to disk as they're collected and written back one at
+  a time, so memory stays flat regardless of how big the site is.
+- Queued exports, with a "run in the background" option on the export screen.
+- Console commands: `archive/export`, `archive/bundles`, `archive/bundles/prune` and
+  `archive/bundles/delete`.
 - JSON master data file plus a `manifest.json` describing every bundle.
 - Control panel export screen, bundle list with download and delete, and settings screen.
 - `archive:export` and `archive:manage` permissions.

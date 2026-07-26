@@ -59,7 +59,15 @@ class ExportController extends Controller
             return $this->renderIndex($config);
         }
 
-        // Exports run inline for now, and a big site takes a while.
+        if (Craft::$app->getRequest()->getBodyParam('runInBackground')) {
+            Plugin::getInstance()->export->queue($config);
+
+            Craft::$app->getSession()->setNotice(Craft::t('archive', 'Export queued.'));
+
+            return $this->redirect(UrlHelper::cpUrl('archive/bundles'));
+        }
+
+        // Running inline, so give the request as much room as the server will allow.
         App::maxPowerCaptain();
 
         try {

@@ -2,6 +2,7 @@
 
 namespace justinholtweb\archive\collectors;
 
+use justinholtweb\archive\models\ExportConfig;
 use justinholtweb\archive\models\ExportContext;
 
 /**
@@ -33,4 +34,10 @@ interface CollectorInterface
      * Collects records into the context.
      */
     public function collect(ExportContext $context): void;
+
+    /**
+     * Roughly how many records this collector will produce, so a queued export can show a
+     * progress bar. Should count, not collect.
+     */
+    public function estimate(ExportConfig $config): int;
 }

@@ -8,6 +8,7 @@ use craft\elements\db\ElementQueryInterface;
 use craft\elements\GlobalSet;
 use craft\models\Site;
 use justinholtweb\archive\helpers\ValueHelper;
+use justinholtweb\archive\models\ExportConfig;
 use justinholtweb\archive\models\ExportContext;
 
 /**
@@ -25,7 +26,7 @@ class GlobalSetCollector extends BaseCollector
         return Craft::t('archive', 'Globals');
     }
 
-    protected function query(ExportContext $context, Site $site): ?ElementQueryInterface
+    protected function query(ExportConfig $config, Site $site): ?ElementQueryInterface
     {
         return GlobalSet::find()
             ->siteId($site->id)

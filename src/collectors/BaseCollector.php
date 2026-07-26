@@ -8,6 +8,7 @@ use craft\elements\db\ElementQueryInterface;
 use craft\models\Site;
 use justinholtweb\archive\helpers\RefHelper;
 use justinholtweb\archive\helpers\ValueHelper;
+use justinholtweb\archive\models\ExportConfig;
 use justinholtweb\archive\models\ExportContext;
 use justinholtweb\archive\Plugin;
 use Throwable;
@@ -40,8 +41,33 @@ abstract class BaseCollector extends Component implements CollectorInterface
 
     /**
      * The query this collector walks, for one site.
+     *
+     * Takes the config rather than the whole context so it can also be used to size up a
+     * run before collecting anything — see {@see estimate()}.
      */
-    abstract protected function query(ExportContext $context, Site $site): ?ElementQueryInterface;
+    abstract protected function query(ExportConfig $config, Site $site): ?ElementQueryInterface;
+
+    /**
+     * Roughly how many records this collector will produce, for progress reporting. Counts
+     * rather than collects, so it's cheap.
+     */
+    public function estimate(ExportConfig $config): int
+    {
+        $total = 0;
+
+        foreach ($this->sites($config) as $site) {
+            $query = $this->query($config, $site);
+
+            if ($query === null) {
+                continue;
+            }
+
+            $count = (int)$query->count();
+            $total += $config->limit !== null ? min($count, $config->limit) : $count;
+        }
+
+        return $total;
+    }
 
     /**
      * A last filter, for decisions a query can't express — such as holding back addresses
@@ -60,8 +86,8 @@ abstract class BaseCollector extends Component implements CollectorInterface
 
     public function collect(ExportContext $context): void
     {
-        foreach ($this->sites($context) as $site) {
-            $query = $this->query($context, $site);
+        foreach ($this->sites($context->config) as $site) {
+            $query = $this->query($context->config, $site);
 
             if ($query === null) {
                 continue;
@@ -96,9 +122,9 @@ abstract class BaseCollector extends Component implements CollectorInterface
      *
      * @return Site[]
      */
-    protected function sites(ExportContext $context): array
+    protected function sites(ExportConfig $config): array
     {
-        $sites = $context->config->getSites();
+        $sites = $config->getSites();
 
         if ($this->isLocalized()) {
             return $sites;

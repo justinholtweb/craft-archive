@@ -3,6 +3,7 @@
 namespace justinholtweb\archive\writers;
 
 use Craft;
+use Generator;
 use justinholtweb\archive\helpers\Flattener;
 use justinholtweb\archive\models\ExportContext;
 use RuntimeException;
@@ -33,61 +34,86 @@ class CsvWriter extends BaseWriter
     {
         $files = [];
 
-        foreach ($context->records as $type => $records) {
+        foreach ($context->records->types() as $type) {
             // A type that matched nothing has no columns to write a header from, so it
             // would only produce an empty file. The manifest still records the zero.
-            if (!$records) {
+            if ($context->records->count($type) === 0) {
                 continue;
             }
 
-            $rows = array_map(Flattener::record(...), $records);
-            $files[] = $this->putCsv($stagingDir, "data/csv/$type.csv", $rows);
+            $files[] = $this->streamCsv(
+                $stagingDir,
+                "data/csv/$type.csv",
+                fn() => $this->recordRows($context, $type)
+            );
         }
 
-        $relations = $this->relationRows($context);
-        if ($relations) {
-            $files[] = $this->putCsv($stagingDir, 'data/csv/relations.csv', $relations);
+        if ($this->hasRelations($context)) {
+            $files[] = $this->streamCsv(
+                $stagingDir,
+                'data/csv/relations.csv',
+                fn() => $this->relationRows($context)
+            );
         }
 
         foreach ($this->schemaFiles($context) as $path => $rows) {
-            $files[] = $this->putCsv($stagingDir, $path, $rows);
+            $files[] = $this->streamCsv($stagingDir, $path, fn() => yield from $rows);
         }
 
         return $files;
     }
 
     /**
-     * Every relation in the bundle, as a join table: which record points at which, through
-     * which field. This is the shape a relational importer actually wants.
-     *
-     * @return list<array<string, mixed>>
+     * @return Generator<int, array<string, mixed>>
      */
-    private function relationRows(ExportContext $context): array
+    private function recordRows(ExportContext $context, string $type): Generator
     {
-        $rows = [];
+        foreach ($context->records->each($type) as $record) {
+            yield Flattener::record($record);
+        }
+    }
 
-        foreach ($context->records as $type => $records) {
-            foreach ($records as $record) {
-                foreach ($record['relations'] ?? [] as $relation) {
-                    foreach ($relation['targets'] ?? [] as $position => $target) {
-                        $rows[] = [
-                            'recordType' => $type,
-                            'recordUid' => $record['uid'] ?? null,
-                            'recordSite' => $record['site'] ?? null,
-                            'field' => $relation['field'] ?? null,
-                            'fieldType' => $relation['fieldType'] ?? null,
-                            'position' => $position + 1,
-                            'targetUid' => $target['uid'] ?? null,
-                            'targetType' => $target['type'] ?? null,
-                            'targetTitle' => $target['title'] ?? null,
-                            'targetUrl' => $target['url'] ?? null,
-                        ];
-                    }
-                }
+    /**
+     * Whether anything in the bundle has an outgoing relation — checked before opening a
+     * file, so an export with none doesn't leave an empty relations.csv behind.
+     */
+    private function hasRelations(ExportContext $context): bool
+    {
+        foreach ($context->records->eachOfAll() as [, $record]) {
+            if (!empty($record['relations'])) {
+                return true;
             }
         }
 
-        return $rows;
+        return false;
+    }
+
+    /**
+     * Every relation in the bundle, as a join table: which record points at which, through
+     * which field. This is the shape a relational importer actually wants.
+     *
+     * @return Generator<int, array<string, mixed>>
+     */
+    private function relationRows(ExportContext $context): Generator
+    {
+        foreach ($context->records->eachOfAll() as [$type, $record]) {
+            foreach ($record['relations'] ?? [] as $relation) {
+                foreach ($relation['targets'] ?? [] as $position => $target) {
+                    yield [
+                        'recordType' => $type,
+                        'recordUid' => $record['uid'] ?? null,
+                        'recordSite' => $record['site'] ?? null,
+                        'field' => $relation['field'] ?? null,
+                        'fieldType' => $relation['fieldType'] ?? null,
+                        'position' => $position + 1,
+                        'targetUid' => $target['uid'] ?? null,
+                        'targetType' => $target['type'] ?? null,
+                        'targetTitle' => $target['title'] ?? null,
+                        'targetUrl' => $target['url'] ?? null,
+                    ];
+                }
+            }
+        }
     }
 
     /**
@@ -127,45 +153,55 @@ class CsvWriter extends BaseWriter
      * Writes rows as CSV, using the union of every row's keys as the header so a column
      * one record uses and another doesn't still appears.
      *
-     * @param list<array<string, mixed>> $rows
+     * Because the header can't be known until every row has been seen, this walks the rows
+     * twice — which is cheap, since they're already spooled on disk. Only one row is in
+     * memory at a time either way.
+     *
+     * @param callable(): iterable<array<string, mixed>> $rows Called once per pass.
      */
-    private function putCsv(string $stagingDir, string $relativePath, array $rows): string
+    private function streamCsv(string $stagingDir, string $relativePath, callable $rows): string
     {
         $columns = [];
 
-        foreach ($rows as $row) {
+        foreach ($rows() as $row) {
             foreach (array_keys($row) as $key) {
                 $columns[$key] = true;
             }
         }
 
         $columns = array_keys($columns);
+        $handle = $this->open($stagingDir, $relativePath);
 
-        $handle = fopen('php://temp', 'r+');
+        try {
+            $this->putRow($handle, $columns);
 
-        if ($handle === false) {
-            throw new RuntimeException("Couldn’t build $relativePath.");
+            foreach ($rows() as $row) {
+                $line = [];
+
+                foreach ($columns as $column) {
+                    $value = $row[$column] ?? null;
+                    $line[] = is_bool($value) ? ($value ? 'true' : 'false') : $value;
+                }
+
+                $this->putRow($handle, $line);
+            }
+        } finally {
+            fclose($handle);
         }
 
+        return $relativePath;
+    }
+
+    /**
+     * @param resource $handle
+     * @param list<mixed> $values
+     */
+    private function putRow($handle, array $values): void
+    {
         // An empty escape string gives plain RFC 4180 quoting, rather than PHP's
         // backslash escaping, which most CSV readers don't expect.
-        fputcsv($handle, $columns, ',', '"', '');
-
-        foreach ($rows as $row) {
-            $line = [];
-
-            foreach ($columns as $column) {
-                $value = $row[$column] ?? null;
-                $line[] = is_bool($value) ? ($value ? 'true' : 'false') : $value;
-            }
-
-            fputcsv($handle, $line, ',', '"', '');
+        if (fputcsv($handle, $values, ',', '"', '') === false) {
+            throw new RuntimeException('Couldn’t write a CSV row.');
         }
-
-        rewind($handle);
-        $contents = (string)stream_get_contents($handle);
-        fclose($handle);
-
-        return $this->put($stagingDir, $relativePath, $contents);
     }
 }

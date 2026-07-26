@@ -9,6 +9,7 @@ use craft\elements\User;
 use craft\models\Site;
 use justinholtweb\archive\helpers\RefHelper;
 use justinholtweb\archive\helpers\ValueHelper;
+use justinholtweb\archive\models\ExportConfig;
 use justinholtweb\archive\models\ExportContext;
 use justinholtweb\archive\Plugin;
 use Throwable;
@@ -43,10 +44,10 @@ class UserCollector extends BaseCollector
         return false;
     }
 
-    protected function query(ExportContext $context, Site $site): ?ElementQueryInterface
+    protected function query(ExportConfig $config, Site $site): ?ElementQueryInterface
     {
         return User::find()
-            ->status($context->config->includeDisabled ? null : ['active', 'pending']);
+            ->status($config->includeDisabled ? null : ['active', 'pending']);
     }
 
     protected function attributes(ElementInterface $element, ExportContext $context): array
