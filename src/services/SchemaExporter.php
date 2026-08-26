@@ -53,11 +53,14 @@ class SchemaExporter extends Component
         try {
             return $builder();
         } catch (Throwable $e) {
+            // Some Craft exceptions (FieldNotFoundException among them) carry no message at
+            // all, which turned this warning into a dead end. Fall back to the class name.
+            $message = $e->getMessage() !== '' ? $e->getMessage() : get_class($e);
             $context->warn(Craft::t('archive', 'Couldn’t export {label} to the schema: {message}', [
                 'label' => $label,
-                'message' => $e->getMessage(),
+                'message' => $message,
             ]));
-            Craft::warning("Schema export failed for $label: {$e->getMessage()}", Plugin::LOG_CATEGORY);
+            Craft::warning("Schema export failed for $label: $message", Plugin::LOG_CATEGORY);
             return [];
         }
     }
@@ -290,8 +293,20 @@ class SchemaExporter extends Component
             $handles = [];
 
             foreach ($tab->getElements() as $element) {
-                if ($element instanceof CustomField) {
+                if (!$element instanceof CustomField) {
+                    continue;
+                }
+
+                // A layout can outlive the field it points at — an uninstalled plugin leaves
+                // its layout elements behind. Skip the orphan rather than losing every entry
+                // type in the bundle over one dangling reference.
+                try {
                     $handles[] = $element->getField()->handle;
+                } catch (Throwable $e) {
+                    Craft::warning(
+                        sprintf('Skipping orphaned layout element %s: no such field.', $element->fieldUid ?? $element->uid ?? '?'),
+                        Plugin::LOG_CATEGORY,
+                    );
                 }
             }
 

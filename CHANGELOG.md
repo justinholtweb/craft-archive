@@ -1,5 +1,12 @@
 # Release Notes for Archive
 
+## 5.0.1 - 2026-08-26
+
+### Fixed
+
+- **Bundles could export zero entry types while reporting success.** A field layout that referenced a deleted field made `CustomField::getField()` throw, and the schema exporter turned that into a warning for the *entire* `entryTypes` section — so one orphaned layout element silently cost the bundle every entry type it had. Orphaned elements are now skipped and logged individually.
+- Schema export warnings no longer read `Couldn't export entry types to the schema:` with nothing after the colon. `FieldNotFoundException` carries an empty message, so the warning now falls back to the exception class name.
+
 ## 5.0.0 - 2026-07-26
 
 Initial release. Archive exports everything on a Craft site into a portable, platform-neutral

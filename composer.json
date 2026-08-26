@@ -2,7 +2,7 @@
     "name": "justinholtweb/craft-archive",
     "description": "Export everything on a Craft site — entries, assets, relations, users and settings — into portable JSON, XML, CSV, YAML or NDJSON bundles for migration to any platform.",
     "type": "craft-plugin",
-    "version": "5.0.0",
+    "version": "5.0.1",
     "keywords": [
         "craft",
         "cms",
